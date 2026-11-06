@@ -1,0 +1,17 @@
+[package]
+name = "bmodels_engine"
+description = "bmodels sync orchestration and change detection"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+
+[features]
+default = []
+fail-on-warnings = []

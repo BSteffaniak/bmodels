@@ -1,0 +1,84 @@
+[workspace]
+members = ["packages/*"]
+resolver = "3"
+
+[workspace.package]
+authors = ["Braden Steffaniak"]
+categories = ["command-line-utilities"]
+edition = "2024"
+keywords = ["ai", "llm", "models", "registry", "monitoring"]
+license = "MPL-2.0"
+readme = "README.md"
+repository = "https://github.com/BSteffaniak/bmodels"
+version = "0.1.0"
+
+[workspace.dependencies]
+# Internal packages
+bmodels_catalog = { version = "0.1.0", path = "packages/catalog", default-features = false }
+bmodels_cli = { version = "0.1.0", path = "packages/cli", default-features = false }
+bmodels_config = { version = "0.1.0", path = "packages/config", default-features = false }
+bmodels_engine = { version = "0.1.0", path = "packages/engine", default-features = false }
+bmodels_model = { version = "0.1.0", path = "packages/model", default-features = false }
+bmodels_notify = { version = "0.1.0", path = "packages/notify", default-features = false }
+bmodels_sources = { version = "0.1.0", path = "packages/sources", default-features = false }
+bmodels_store = { version = "0.1.0", path = "packages/store", default-features = false }
+bmodels_tui = { version = "0.1.0", path = "packages/tui", default-features = false }
+
+# Upstream bmux (local sibling checkout; switch to git once published)
+bmux_config_composition = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/config-composition" }
+bmux_keyboard = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/keyboard" }
+bmux_tui = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui" }
+bmux_tui_components = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-components" }
+bmux_tui_runtime = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-runtime" }
+
+# Upstream switchy (local sibling checkout; switch to git once published)
+switchy_database = { version = "0.5.0", default-features = false, path = "../MoosicBox/packages/switchy/database" }
+switchy_database_connection = { version = "0.5.0", default-features = false, path = "../MoosicBox/packages/switchy/database_connection" }
+switchy_http = { version = "0.5.0", default-features = false, path = "../MoosicBox/packages/switchy/http" }
+
+# CLI
+clap = { version = "4.6.7", default-features = false, features = [
+    "derive",
+    "error-context",
+    "help",
+    "std",
+    "usage",
+] }
+
+# Serialization
+serde = { version = "1.0.229", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.154", default-features = false, features = [
+    "std",
+] }
+toml = { version = "1.2.1", default-features = false, features = [
+    "parse",
+    "serde",
+] }
+
+# Error handling
+thiserror = { version = "2.0.21", default-features = false }
+
+# Async
+tokio = { version = "1.54.1", default-features = false }
+
+# Misc
+chrono = { version = "0.4.45", default-features = false }
+globset = { version = "0.4.21", default-features = false }
+notify-rust = { version = "4.18.2", default-features = false }
+open = { version = "5.4.0", default-features = false }
+
+# Logging
+log = { version = "0.4.35", default-features = false }
+pretty_env_logger = { version = "0.5.0", default-features = false }
+
+# Testing
+pretty_assertions = { version = "1.4.1", default-features = false, features = [
+    "std",
+] }
+tempfile = { version = "3.27.0", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+strip = "symbols"

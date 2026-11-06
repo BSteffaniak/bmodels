@@ -1,0 +1,22 @@
+[package]
+name = "bmodels"
+description = "Watch model registries for new and changed AI models"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "bmodels"
+path = "src/main.rs"
+
+[dependencies]
+bmodels_cli = { workspace = true }
+
+[features]
+default = []
+fail-on-warnings = ["bmodels_cli/fail-on-warnings"]
