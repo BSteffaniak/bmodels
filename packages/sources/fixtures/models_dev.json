@@ -1,0 +1,270 @@
+{
+ "openai": {
+  "id": "openai",
+  "env": [
+   "OPENAI_API_KEY"
+  ],
+  "npm": "@ai-sdk/openai",
+  "name": "OpenAI",
+  "doc": "https://platform.openai.com/docs/models",
+  "models": {
+   "gpt-4o-2024-08-06": {
+    "id": "gpt-4o-2024-08-06",
+    "name": "GPT-4o (2024-08-06)",
+    "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+    "family": "gpt",
+    "attachment": true,
+    "reasoning": false,
+    "tool_call": true,
+    "structured_output": true,
+    "temperature": true,
+    "knowledge": "2023-09",
+    "release_date": "2024-08-06",
+    "last_updated": "2024-08-06",
+    "modalities": {
+     "input": [
+      "text",
+      "image"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "open_weights": false,
+    "limit": {
+     "context": 128000,
+     "output": 16384
+    },
+    "cost": {
+     "input": 2.5,
+     "output": 10,
+     "cache_read": 1.25
+    }
+   },
+   "gpt-4o-2024-11-20": {
+    "id": "gpt-4o-2024-11-20",
+    "name": "GPT-4o (2024-11-20)",
+    "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+    "family": "gpt",
+    "attachment": true,
+    "reasoning": false,
+    "tool_call": true,
+    "structured_output": true,
+    "temperature": true,
+    "knowledge": "2023-09",
+    "release_date": "2024-11-20",
+    "last_updated": "2024-11-20",
+    "modalities": {
+     "input": [
+      "text",
+      "image"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "open_weights": false,
+    "limit": {
+     "context": 128000,
+     "output": 16384
+    },
+    "cost": {
+     "input": 2.5,
+     "output": 10,
+     "cache_read": 1.25
+    }
+   },
+   "gpt-4o-mini": {
+    "id": "gpt-4o-mini",
+    "name": "GPT-4o mini",
+    "description": "Small omni GPT for cheap multimodal assistance and production-scale traffic",
+    "family": "gpt-mini",
+    "attachment": true,
+    "reasoning": false,
+    "tool_call": true,
+    "structured_output": true,
+    "temperature": true,
+    "knowledge": "2023-09",
+    "release_date": "2024-07-18",
+    "last_updated": "2024-07-18",
+    "modalities": {
+     "input": [
+      "text",
+      "image",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "open_weights": false,
+    "limit": {
+     "context": 128000,
+     "output": 16384
+    },
+    "experimental": {
+     "modes": {
+      "fast": {
+       "cost": {
+        "input": 0.25,
+        "output": 1,
+        "cache_read": 0.125
+       },
+       "provider": {
+        "body": {
+         "service_tier": "priority"
+        }
+       }
+      }
+     }
+    },
+    "cost": {
+     "input": 0.15,
+     "output": 0.6,
+     "cache_read": 0.075
+    }
+   }
+  }
+ },
+ "anthropic": {
+  "id": "anthropic",
+  "env": [
+   "ANTHROPIC_API_KEY"
+  ],
+  "npm": "@ai-sdk/anthropic",
+  "name": "Anthropic",
+  "doc": "https://docs.anthropic.com/en/docs/about-claude/models",
+  "models": {
+   "claude-haiku-5-5": {
+    "id": "claude-haiku-5-5",
+    "name": "Claude Haiku 5.5",
+    "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
+    "family": "claude-haiku",
+    "attachment": true,
+    "reasoning": true,
+    "reasoning_options": [
+     {
+      "type": "toggle"
+     },
+     {
+      "type": "effort",
+      "values": [
+       "low",
+       "medium",
+       "high",
+       "xhigh",
+       "max"
+      ]
+     }
+    ],
+    "tool_call": true,
+    "structured_output": true,
+    "temperature": false,
+    "knowledge": "2026-06",
+    "release_date": "2026-10-07",
+    "last_updated": "2026-10-07",
+    "modalities": {
+     "input": [
+      "text",
+      "image",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "open_weights": false,
+    "limit": {
+     "context": 1000000,
+     "output": 128000
+    },
+    "cost": {
+     "input": 0.1,
+     "output": 0.5,
+     "cache_read": 0.01,
+     "cache_write": 0.125,
+     "tiers": [
+      {
+       "input": 0.5,
+       "output": 2.5,
+       "cache_read": 0.05,
+       "cache_write": 0.625,
+       "tier": {
+        "type": "context",
+        "size": 100000
+       }
+      }
+     ]
+    },
+    "canonical_model_id": "anthropic/claude-haiku-5-5"
+   },
+   "claude-opus-4-8": {
+    "id": "claude-opus-4-8",
+    "name": "Claude Opus 4.8",
+    "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
+    "family": "claude-opus",
+    "attachment": true,
+    "reasoning": true,
+    "reasoning_options": [
+     {
+      "type": "effort",
+      "values": [
+       "low",
+       "medium",
+       "high",
+       "xhigh",
+       "max"
+      ]
+     }
+    ],
+    "tool_call": true,
+    "structured_output": true,
+    "temperature": false,
+    "knowledge": "2026-01",
+    "release_date": "2026-05-28",
+    "last_updated": "2026-05-28",
+    "modalities": {
+     "input": [
+      "text",
+      "image",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "open_weights": false,
+    "limit": {
+     "context": 1000000,
+     "output": 128000
+    },
+    "experimental": {
+     "modes": {
+      "fast": {
+       "cost": {
+        "input": 10,
+        "output": 50,
+        "cache_read": 1,
+        "cache_write": 12.5
+       },
+       "provider": {
+        "body": {
+         "speed": "fast"
+        },
+        "headers": {
+         "anthropic-beta": "fast-mode-2026-02-01"
+        }
+       }
+      }
+     }
+    },
+    "cost": {
+     "input": 5,
+     "output": 25,
+     "cache_read": 0.5,
+     "cache_write": 6.25
+    }
+   }
+  }
+ }
+}

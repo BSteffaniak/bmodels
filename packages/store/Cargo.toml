@@ -10,8 +10,25 @@ readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+# SQLite comes from `switchy_database`'s `sqlite-rusqlite` backend (the MoosicBox workspace pins
+# `rusqlite` with `bundled`, so the amalgamation is compiled for the target).
 [dependencies]
+bmodels_model = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+switchy_database = { workspace = true, features = [
+    "schema",
+    "sqlite-rusqlite",
+] }
+switchy_database_connection = { workspace = true, features = [
+    "sqlite-rusqlite",
+] }
+thiserror = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 
 [features]
 default = []
-fail-on-warnings = []
+fail-on-warnings = ["bmodels_model/fail-on-warnings"]

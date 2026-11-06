@@ -11,7 +11,20 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+bmodels_model = { workspace = true }
+notify-rust = { workspace = true, features = ["z"] }
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true }
+switchy_http = { workspace = true, features = ["gzip", "reqwest"] }
+thiserror = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = ["time"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
 
 [features]
 default = []
-fail-on-warnings = []
+fail-on-warnings = [
+    "bmodels_model/fail-on-warnings",
+    "switchy_http/fail-on-warnings",
+]

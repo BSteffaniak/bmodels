@@ -1,0 +1,80 @@
+# Public registries and aggregators. No API key needed.
+
+[sources.openrouter]
+name = "OpenRouter"
+kind = "OPENROUTER"
+url = "https://openrouter.ai/api/v1/models"
+model_url = "https://openrouter.ai/{id}"
+
+[sources.models_dev]
+name = "models.dev"
+kind = "MODELS_DEV"
+url = "https://models.dev/api.json"
+# First-party providers only; models.dev also lists ~200 resellers of the same models.
+providers = [
+    "alibaba",
+    "anthropic",
+    "cohere",
+    "deepseek",
+    "google",
+    "meta",
+    "minimax",
+    "mistral",
+    "moonshotai",
+    "openai",
+    "xai",
+    "zai",
+]
+model_url = "https://models.dev/?search={id}"
+
+[sources.litellm]
+name = "LiteLLM"
+kind = "LITELLM"
+url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+providers = ["anthropic", "deepseek", "gemini", "mistral", "openai", "xai"]
+interval = "12h"
+
+[sources.huggingface]
+name = "Hugging Face"
+kind = "HUGGINGFACE"
+url = "https://huggingface.co/api/models"
+api_key_env = "HF_TOKEN"
+api_key_optional = true
+# First-party LLM orgs. `google` and `microsoft` are left out by default: they publish dozens of
+# research artifacts a week (Gemma and Phi releases still arrive via the other registries).
+authors = [
+    "deepseek-ai",
+    "meta-llama",
+    "mistralai",
+    "moonshotai",
+    "openai",
+    "Qwen",
+    "zai-org",
+]
+limit = 30
+model_url = "https://huggingface.co/{id}"
+
+[sources.ollama]
+name = "Ollama library"
+kind = "OLLAMA_LIBRARY"
+url = "https://ollama.com/library?sort=newest"
+model_url = "https://ollama.com/library/{id}"
+interval = "12h"
+
+# Announcement feeds. Off by default: they are news, not models.
+
+[sources.openai_news]
+name = "OpenAI News"
+kind = "FEED"
+enabled = false
+url = "https://openai.com/news/rss.xml"
+vendor = "openai"
+limit = 50
+
+[sources.google_ai_blog]
+name = "Google AI Blog"
+kind = "FEED"
+enabled = false
+url = "https://blog.google/technology/ai/rss/"
+vendor = "google"
+limit = 50

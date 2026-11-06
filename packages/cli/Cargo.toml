@@ -11,8 +11,31 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+anyhow = { workspace = true }
+bmodels_config = { workspace = true }
+bmodels_engine = { workspace = true }
+bmodels_model = { workspace = true }
+bmodels_notify = { workspace = true }
+bmodels_sources = { workspace = true }
+bmodels_store = { workspace = true }
+bmodels_tui = { workspace = true }
 clap = { workspace = true }
+log = { workspace = true }
+open = { workspace = true }
+pretty_env_logger = { workspace = true }
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
+toml = { workspace = true, features = ["display", "serde"] }
 
 [features]
 default = []
-fail-on-warnings = []
+fail-on-warnings = [
+    "bmodels_config/fail-on-warnings",
+    "bmodels_engine/fail-on-warnings",
+    "bmodels_model/fail-on-warnings",
+    "bmodels_notify/fail-on-warnings",
+    "bmodels_sources/fail-on-warnings",
+    "bmodels_store/fail-on-warnings",
+    "bmodels_tui/fail-on-warnings",
+]

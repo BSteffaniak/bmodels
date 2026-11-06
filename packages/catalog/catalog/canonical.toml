@@ -1,0 +1,87 @@
+# How listings from different sources map onto one canonical model (`vendor/family`).
+
+[canonical]
+collapse_snapshots = true
+# Routing, alias, and weight-format suffixes that do not make a different model.
+strip_suffixes = [
+    "-awq",
+    "-bf16",
+    "-fp16",
+    "-fp8",
+    "-gguf",
+    "-gptq",
+    "-int4",
+    "-int8",
+    "-mlx",
+    "-mxfp4",
+    "-nvfp4",
+    ":beta",
+    ":exacto",
+    ":extended",
+    ":floor",
+    ":free",
+    ":nitro",
+    ":online",
+    ":thinking",
+    "-latest",
+]
+
+[canonical.vendor_aliases]
+alibaba = "qwen"
+"deepseek-ai" = "deepseek"
+gemini = "google"
+"meta-llama" = "meta"
+mistralai = "mistral"
+moonshotai = "moonshot"
+"vertex_ai" = "google"
+"x-ai" = "xai"
+"z-ai" = "zhipu"
+zai = "zhipu"
+"zai-org" = "zhipu"
+zhipuai = "zhipu"
+
+# Model-id prefix → vendor, for hosts whose ids carry no vendor (`llama-3.3-70b-versatile`).
+[canonical.family_vendors]
+aya = "cohere"
+bge = "baai"
+chatgpt = "openai"
+claude = "anthropic"
+codestral = "mistral"
+command = "cohere"
+dall-e = "openai"
+deepseek = "deepseek"
+devstral = "mistral"
+embeddinggemma = "google"
+ernie = "baidu"
+exaone = "lg"
+falcon = "tii"
+gemini = "google"
+gemma = "google"
+glm = "zhipu"
+gpt = "openai"
+granite = "ibm"
+grok = "xai"
+hunyuan = "tencent"
+kimi = "moonshot"
+lfm = "liquid"
+llama = "meta"
+magistral = "mistral"
+mimo = "xiaomi"
+minimax = "minimax"
+ministral = "mistral"
+mistral = "mistral"
+mixtral = "mistral"
+nemotron = "nvidia"
+olmo = "allenai"
+o1 = "openai"
+o3 = "openai"
+o4 = "openai"
+phi = "microsoft"
+pixtral = "mistral"
+qwen = "qwen"
+qwq = "qwen"
+smollm = "huggingface"
+sora = "openai"
+starcoder = "bigcode"
+voxtral = "mistral"
+whisper = "openai"

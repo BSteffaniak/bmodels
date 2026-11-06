@@ -5,6 +5,9 @@ See `docs/PLAN.md` for the architecture.
 
 ## Build/Test Commands
 
+Run everything inside `nix develop` (or `nix develop --command <cmd>`): linking on macOS needs
+the shell's `libiconv`.
+
 - **Rust build**: `cargo build`
 - **Rust test**: `cargo nextest run --no-fail-fast` (or `cargo test`), `cargo test -p <package>` (single package)
 - **Rust lint**: `cargo clippy --all-targets -- -D warnings` (zero warnings is REQUIRED)

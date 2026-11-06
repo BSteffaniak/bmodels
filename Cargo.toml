@@ -56,16 +56,23 @@ toml = { version = "1.2.1", default-features = false, features = [
 ] }
 
 # Error handling
+anyhow = { version = "1.0.104", default-features = false, features = ["std"] }
 thiserror = { version = "2.0.21", default-features = false }
 
 # Async
+async-trait = { version = "0.1.89", default-features = false }
+futures-util = { version = "0.3.34", default-features = false, features = [
+    "std",
+] }
 tokio = { version = "1.54.1", default-features = false }
 
 # Misc
 chrono = { version = "0.4.45", default-features = false }
+dirs = { version = "7.0.0", default-features = false }
 globset = { version = "0.4.21", default-features = false }
 notify-rust = { version = "4.18.2", default-features = false }
 open = { version = "5.4.0", default-features = false }
+roxmltree = { version = "0.21.2", default-features = false, features = ["std"] }
 
 # Logging
 log = { version = "0.4.35", default-features = false }

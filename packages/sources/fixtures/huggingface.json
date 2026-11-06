@@ -1,0 +1,63 @@
+[
+ {
+  "_id": "6ac87279c9d527ebb329f4d1",
+  "id": "Qwen/Qwen-Image-2.1-Turbo",
+  "likes": 1116,
+  "private": false,
+  "downloads": 46165,
+  "tags": [
+   "diffusers",
+   "safetensors",
+   "qwen",
+   "image-generation",
+   "image-editing",
+   "text-to-image",
+   "base_model:Qwen/Qwen-Image-2.1",
+   "base_model:finetune:Qwen/Qwen-Image-2.1",
+   "license:other",
+   "diffusers:QwenImage21Pipeline",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "library_name": "diffusers",
+  "createdAt": "2026-10-09T04:50:01.000Z",
+  "modelId": "Qwen/Qwen-Image-2.1-Turbo"
+ },
+ {
+  "_id": "6aaf9d774a43a3fea0c8b63b",
+  "id": "Qwen/Qwen-Image-2.1-PE-I2I",
+  "likes": 73,
+  "private": false,
+  "downloads": 13602,
+  "tags": [
+   "safetensors",
+   "qwen3_5",
+   "qwen",
+   "prompt-rewriting",
+   "image-editing",
+   "license:other",
+   "region:us"
+  ],
+  "createdAt": "2026-09-20T08:46:47.000Z",
+  "modelId": "Qwen/Qwen-Image-2.1-PE-I2I"
+ },
+ {
+  "_id": "6aaf9d29343d3bfa98cc3ba1",
+  "id": "Qwen/Qwen-Image-2.1-PE-T2I",
+  "likes": 78,
+  "private": false,
+  "downloads": 5344,
+  "tags": [
+   "safetensors",
+   "qwen3_5",
+   "qwen",
+   "prompt-rewriting",
+   "text-to-image",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-09-20T08:45:29.000Z",
+  "modelId": "Qwen/Qwen-Image-2.1-PE-T2I"
+ }
+]

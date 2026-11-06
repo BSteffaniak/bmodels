@@ -1,0 +1,10 @@
+# Vendor and product names that appear in docs.
+doc-valid-idents = [
+    "..",
+    "DeepSeek",
+    "HuggingFace",
+    "LiteLLM",
+    "OpenAI",
+    "OpenRouter",
+    "xAI",
+]

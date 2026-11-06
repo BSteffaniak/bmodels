@@ -11,7 +11,18 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+bmodels_model = { workspace = true }
+bmodels_sources = { workspace = true }
+bmodels_store = { workspace = true }
+futures-util = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
 
 [features]
 default = []
-fail-on-warnings = []
+fail-on-warnings = [
+    "bmodels_model/fail-on-warnings",
+    "bmodels_sources/fail-on-warnings",
+    "bmodels_store/fail-on-warnings",
+]

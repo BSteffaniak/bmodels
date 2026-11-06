@@ -11,7 +11,28 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+bmodels_model = { workspace = true }
+bmux_keyboard = { workspace = true }
+bmux_tui = { workspace = true, features = ["crossterm"] }
+bmux_tui_components = { workspace = true, features = [
+    "key-hint-bar",
+    "labeled-details",
+    "modal-frame",
+    "pane",
+    "scrollbar",
+    "status-bar",
+    "tab-bar",
+] }
+bmux_tui_runtime = { workspace = true, features = ["crossterm"] }
+thiserror = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
 
 [features]
 default = []
-fail-on-warnings = []
+fail-on-warnings = [
+    "bmodels_model/fail-on-warnings",
+    "bmux_keyboard/fail-on-warnings",
+    "bmux_tui/fail-on-warnings",
+    "bmux_tui_components/fail-on-warnings",
+    "bmux_tui_runtime/fail-on-warnings",
+]

@@ -1,0 +1,277 @@
+{
+ "data": [
+  {
+   "id": "google/gemini-omni-1.2-flash",
+   "canonical_slug": "google/gemini-omni-1.2-flash-20261105",
+   "hugging_face_id": null,
+   "name": "Google: Gemini Omni 1.2 Flash",
+   "created": 1793898961,
+   "description": "Gemini Omni 1.2 Flash is Google's native multimodal video generation and editing model, the successor to Gemini Omni 1.1 Flash. It generates clips up to 15 seconds long with native...",
+   "context_length": 131072,
+   "architecture": {
+    "modality": "text+image+video->text+video",
+    "input_modalities": [
+     "text",
+     "image",
+     "video"
+    ],
+    "output_modalities": [
+     "text",
+     "video"
+    ],
+    "tokenizer": "Gemini",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.0000015",
+    "completion": "0.000009",
+    "web_search": "0.014"
+   },
+   "top_provider": {
+    "context_length": 131072,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "seed",
+    "temperature",
+    "top_p"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/google/gemini-omni-1.2-flash-20261105/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses",
+    "/api/v1/videos"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "low"
+    ],
+    "default_effort": "low"
+   }
+  },
+  {
+   "id": "google/gemini-omni-1.1-flash",
+   "canonical_slug": "google/gemini-omni-1.1-flash-20260911",
+   "hugging_face_id": null,
+   "name": "Google: Gemini Omni 1.1 Flash",
+   "created": 1793825668,
+   "description": "Gemini Omni 1.1 Flash is Google's native multimodal video generation and editing model, the generally available successor to Gemini Omni Flash Preview. It is suited for text-to-video, image-to-video, first and...",
+   "context_length": 131072,
+   "architecture": {
+    "modality": "text+image+video->text+video",
+    "input_modalities": [
+     "text",
+     "image",
+     "video"
+    ],
+    "output_modalities": [
+     "text",
+     "video"
+    ],
+    "tokenizer": "Gemini",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.0000015",
+    "completion": "0.000009",
+    "web_search": "0.014"
+   },
+   "top_provider": {
+    "context_length": 131072,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "seed",
+    "temperature",
+    "top_p"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/google/gemini-omni-1.1-flash-20260911/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses",
+    "/api/v1/videos"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "low"
+    ],
+    "default_effort": "low"
+   }
+  },
+  {
+   "id": "ricursiveai/ripple-65b-preview",
+   "canonical_slug": "ricursiveai/ripple-65b-preview-20261104",
+   "hugging_face_id": null,
+   "name": "Ricursive: Ripple 65B Preview",
+   "created": 1793818990,
+   "description": "Ripple-65B-Preview by ricursiveAI, a 65B model with native tool calling, served in BF16.",
+   "context_length": 1048576,
+   "architecture": {
+    "modality": "text->text",
+    "input_modalities": [
+     "text"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Other",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.0000002",
+    "completion": "0.0000006",
+    "input_cache_read": "0.00000005"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "logprobs",
+    "max_tokens",
+    "response_format",
+    "seed",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_logprobs",
+    "top_p"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/ricursiveai/ripple-65b-preview-20261104/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": false
+   }
+  },
+  {
+   "id": "tencent/hy4",
+   "canonical_slug": "tencent/hy4-20261104",
+   "hugging_face_id": "tencent/Hy4",
+   "name": "Tencent: Hy4",
+   "created": 1793766031,
+   "description": "The official release of Hy4 delivers comprehensive and substantial improvements over Hy4 Preview, with particularly strong gains in agentic capabilities and performance across a wide range of long-horizon, real-world productivity...",
+   "context_length": 1048576,
+   "architecture": {
+    "modality": "text+image->text",
+    "input_modalities": [
+     "text",
+     "image"
+    ],
+    "output_modalities": [
+     "text"
+    ],
+    "tokenizer": "Other",
+    "instruct_type": null
+   },
+   "pricing": {
+    "prompt": "0.000000417",
+    "completion": "0.0000012505",
+    "input_cache_read": "0.000000021"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "per_request_limits": null,
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools"
+   ],
+   "default_parameters": {},
+   "supported_voices": null,
+   "knowledge_cutoff": null,
+   "expiration_date": null,
+   "links": {
+    "details": "/api/v1/models/tencent/hy4-20261104/endpoints"
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "benchmarks": {
+    "design_arena": [
+     {
+      "arena": "models",
+      "category": "website",
+      "elo": 1243,
+      "win_rate": 45.5,
+      "rank": 48
+     }
+    ],
+    "artificial_analysis": {
+     "intelligence_index": 34.6,
+     "coding_index": null,
+     "agentic_index": null
+    }
+   },
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   }
+  }
+ ]
+}

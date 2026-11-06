@@ -11,6 +11,11 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+serde = { workspace = true, features = ["derive", "std"] }
+thiserror = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+toml = { workspace = true, features = ["parse", "serde"] }
 
 [features]
 default = []
