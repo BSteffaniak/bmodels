@@ -13,15 +13,18 @@ use bmux_tui::style::{Color, Modifier, Style};
 use bmux_tui::text::{Line, Span, Text, TextWrap};
 use bmux_tui::text_width::{display_width, truncate_to_display_width};
 use bmux_tui_components::key_hint_bar::{KeyHint, KeyHintBarComponent};
+use bmux_tui_components::labeled_details::{
+    DetailItem, LabelPlacement, LabeledDetailsComponent, LabeledDetailsStyles,
+};
 use bmux_tui_components::modal_frame::{ModalFrame, ModalFrameComponent, ModalSizing, ModalTheme};
 use bmux_tui_components::pane::{Pane, PaneComponent, PaneState};
 use bmux_tui_components::status_bar::{StatusBarComponent, StatusSegment, StatusSeverity};
 use bmux_tui_components::tab_bar::{TabBarComponent, TabBarPolicy, TabBarState, TabItem};
+use bmux_tui_components::uniform_list::UniformList;
 
 use crate::app::{App, MessageLevel, Modal};
 use crate::backend::{Backend, Data, SourceRow};
 use crate::view::{Row, Tab};
-use crate::widgets::{inline_details, paint_component, paint_fixed_rows};
 
 const ACCENT: Color = Color::Cyan;
 const MUTED: Style = Style::new().fg(Color::BrightBlack);
@@ -174,10 +177,9 @@ fn render_header<B: Backend>(app: &App<B>, cx: &mut PaintCx<'_, '_>, area: Rect)
         area.width.saturating_sub(left + info_width + 1),
         1,
     );
-    paint_component(
+    cx.paint_component(
         &TabBarComponent::new("tabs", &items, &state).policy(TabBarPolicy::bare()),
         tabs,
-        cx,
     );
     if info_width > 0 {
         let style = if app.filter_editing {
@@ -215,9 +217,8 @@ fn render_body<B: Backend>(app: &mut App<B>, cx: &mut PaintCx<'_, '_>, body: Rec
         list.height.saturating_sub(1),
     );
     app.viewport_rows = usize::from(rows_area.height.max(1));
+    app.list_area = rows_area;
     let rows = app.rows().to_vec();
-    let mut state = app.state();
-    state.clamp(rows.len(), app.viewport_rows);
     let width = usize::from(rows_area.width.saturating_sub(1));
     write(
         cx,
@@ -238,14 +239,20 @@ fn render_body<B: Backend>(app: &mut App<B>, cx: &mut PaintCx<'_, '_>, body: Rec
         let data = app.data.clone();
         let tick = app.tick;
         let sync = app.sync.clone();
-        paint_fixed_rows(cx, rows_area, rows.len(), state, |i, area, selected, cx| {
-            let mut line = row_line(&data, rows[i], usize::from(area.width), tick, sync.as_ref());
-            if selected {
-                line = line.patch_style(SELECTED);
-                cx.fill(LocalRect::terminal(area), " ", SELECTED);
-            }
-            write(cx, area, &line);
-        });
+        UniformList::new("rows", rows.len()).paint(
+            rows_area,
+            app.state_mut(),
+            cx,
+            |i, area, selected, cx| {
+                let mut line =
+                    row_line(&data, rows[i], usize::from(area.width), tick, sync.as_ref());
+                if selected {
+                    line = line.patch_style(SELECTED);
+                    cx.fill(LocalRect::terminal(area), " ", SELECTED);
+                }
+                write(cx, area, &line);
+            },
+        );
     }
 
     if let Some(area) = pane {
@@ -260,7 +267,7 @@ fn render_body<B: Backend>(app: &mut App<B>, cx: &mut PaintCx<'_, '_>, body: Rec
             &state,
             TextBlock::new(Text::from_lines(lines)).wrap(TextWrap::None),
         );
-        paint_component(&pane, area, cx);
+        cx.paint_component(&pane, area);
     }
 }
 
@@ -593,17 +600,20 @@ fn source_line(
 
 // ------------------------------------------------------------------ details
 
-fn kv(label: &str, value: impl Into<String>) -> (String, String) {
-    (label.to_owned(), value.into())
+fn kv(label: &str, value: impl Into<String>) -> DetailItem {
+    DetailItem::new(label, value)
 }
 
-fn details(items: &[(String, String)], width: u16) -> Vec<Line> {
-    inline_details(
-        items,
-        width.max(20),
-        MUTED.add_modifier(Modifier::BOLD),
-        Style::new(),
-    )
+fn details(items: &[DetailItem], width: u16) -> Vec<Line> {
+    LabeledDetailsComponent::new("details", items)
+        .item_spacing(false)
+        .label_placement(LabelPlacement::Beside)
+        .styles(LabeledDetailsStyles {
+            label: MUTED.add_modifier(Modifier::BOLD),
+            value: Style::new(),
+            continuation: Style::new(),
+        })
+        .lines(width.max(20))
 }
 
 fn section(title: &str) -> Line {
@@ -704,7 +714,7 @@ fn model_details(data: &Data, key: &str, width: u16) -> Vec<Line> {
 }
 
 /// Label/value rows describing a model.
-fn model_fields(data: &Data, m: &CanonicalModel, info: &ModelInfo) -> Vec<(String, String)> {
+fn model_fields(data: &Data, m: &CanonicalModel, info: &ModelInfo) -> Vec<DetailItem> {
     let mut items = vec![
         kv("Key", m.key.clone()),
         kv("Status", m.status.as_str().to_lowercase()),
@@ -886,13 +896,12 @@ fn render_status<B: Backend>(app: &App<B>, cx: &mut PaintCx<'_, '_>, area: Rect)
         " ",
         Style::new().bg(Color::Indexed(236)),
     );
-    paint_component(
+    cx.paint_component(
         &StatusBarComponent::new("status")
             .left(&left)
             .center(&center)
             .right(&right),
         area,
-        cx,
     );
 }
 
@@ -949,7 +958,7 @@ fn render_hints<B: Backend>(app: &App<B>, cx: &mut PaintCx<'_, '_>, area: Rect) 
             Tab::Sources => SOURCES,
         }
     };
-    paint_component(&KeyHintBarComponent::new("hints", hints), area, cx);
+    cx.paint_component(&KeyHintBarComponent::new("hints", hints), area);
 }
 
 fn modal_frame(title: &str, max: Size) -> ModalFrame {
@@ -970,7 +979,7 @@ fn paint_text_modal(
     let block = TextBlock::new(Text::from_lines(lines))
         .wrap(TextWrap::None)
         .vertical_scroll(scroll);
-    paint_component(&ModalFrameComponent::new("modal", frame, block), area, cx);
+    cx.paint_component(&ModalFrameComponent::new("modal", frame, block), area);
 }
 
 fn render_modal<B: Backend>(app: &App<B>, modal: &Modal, cx: &mut PaintCx<'_, '_>, full: Rect) {

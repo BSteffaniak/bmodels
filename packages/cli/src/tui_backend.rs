@@ -174,7 +174,13 @@ async fn run_sync(ctx: &Context, store: &Store, sink: &EventSink, ids: Vec<Strin
     } else {
         Selection::Ids(ids)
     };
-    let http = SwitchyHttp::new(ctx.timeout());
+    let http = match SwitchyHttp::new(ctx.timeout()) {
+        Ok(http) => http,
+        Err(e) => {
+            sink.send(BackendEvent::SyncFinished(format!("sync failed: {e}")));
+            return;
+        }
+    };
     let engine = Engine::new(ctx.config(), store, &http, &ProcessEnv);
     let progress = |p: &Progress| {
         let event = match p {

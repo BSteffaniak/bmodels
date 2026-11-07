@@ -19,7 +19,6 @@ pub mod backend;
 mod program;
 mod render;
 pub mod view;
-pub mod widgets;
 
 pub use app::{App, Handled, MessageLevel, Modal, SyncState};
 pub use backend::{

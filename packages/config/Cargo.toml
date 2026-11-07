@@ -14,7 +14,6 @@ categories.workspace = true
 bmodels_catalog = { workspace = true }
 bmodels_model = { workspace = true }
 bmux_config_composition = { workspace = true }
-dirs = { workspace = true }
 thiserror = { workspace = true, features = ["std"] }
 
 [dev-dependencies]

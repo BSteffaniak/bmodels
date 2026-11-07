@@ -105,7 +105,7 @@ async fn run_sync(
     selection: &Selection,
     live: bool,
 ) -> anyhow::Result<SyncReport> {
-    let http = SwitchyHttp::new(ctx.timeout());
+    let http = SwitchyHttp::new(ctx.timeout())?;
     let engine = Engine::new(ctx.config(), store, &http, &ProcessEnv);
     let progress = |p: &Progress| {
         if !live {

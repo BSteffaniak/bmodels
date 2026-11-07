@@ -130,7 +130,7 @@ fn location_suffix(location: Option<TextLocation>) -> String {
 pub struct LoadOptions {
     /// Working directory (absolute), for relative paths.
     pub cwd: PathBuf,
-    /// Home directory and environment snapshot.
+    /// Environment snapshot (including `HOME`).
     pub env: Environment,
     /// Include the built-in catalog.
     pub catalog: bool,
@@ -186,7 +186,7 @@ impl LoadOptions {
     ///
     /// * [`ConfigError::NoHome`] if the home directory is unknown
     pub fn app_dirs(&self) -> Result<AppDirs, ConfigError> {
-        Ok(AppDirs::resolve(&self.env, Platform::current())?)
+        Ok(self.env.app_dirs()?)
     }
 
     /// The global user file that will be consulted: `$BMODELS_CONFIG` if set, else the platform
@@ -520,7 +520,8 @@ mod tests {
             "APPDATA".to_owned(),
             f.home.join(".config").display().to_string(),
         );
-        LoadOptions::new(f.home.clone(), Environment::new(Some(f.home.clone()), vars))
+        vars.insert("HOME".to_owned(), f.home.display().to_string());
+        LoadOptions::new(f.home.clone(), Environment::new(vars))
     }
 
     fn global_file(f: &Fixture) -> PathBuf {

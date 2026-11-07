@@ -120,22 +120,24 @@ impl std::fmt::Debug for SwitchyHttp {
 impl SwitchyHttp {
     /// Creates a client whose requests (including reading the body) time out after
     /// `timeout`.
-    #[must_use]
-    pub fn new(timeout: Duration) -> Self {
-        Self {
-            client: switchy_http::Client::new(),
-            timeout,
-        }
+    ///
+    /// # Errors
+    ///
+    /// * [`SourceError::Http`] if the HTTP client cannot be initialized (e.g. no TLS backend)
+    pub fn new(timeout: Duration) -> Result<Self, SourceError> {
+        let client = switchy_http::Client::builder()
+            .timeout(timeout)
+            .user_agent(USER_AGENT)
+            .build()
+            .map_err(|e| SourceError::Http(format!("failed to create HTTP client: {e}")))?;
+        Ok(Self { client, timeout })
     }
 }
 
 #[async_trait]
 impl Http for SwitchyHttp {
     async fn get(&self, request: &Request) -> Result<Response, SourceError> {
-        let mut builder = self
-            .client
-            .get(&request.url)
-            .header("user-agent", USER_AGENT);
+        let mut builder = self.client.get(&request.url);
         for (name, value) in &request.headers {
             builder = builder.header(name, value);
         }
@@ -154,13 +156,15 @@ impl Http for SwitchyHttp {
                 body,
             })
         };
-        match tokio::time::timeout(self.timeout, exchange).await {
-            Ok(Ok(response)) => Ok(response),
-            Ok(Err(error)) => Err(SourceError::Http(error.to_string())),
-            Err(_) => Err(SourceError::Http(format!(
-                "timed out after {}",
-                bmodels_model::format_duration(self.timeout)
-            ))),
-        }
+        exchange.await.map_err(|error| {
+            SourceError::Http(if error.is_timeout() {
+                format!(
+                    "timed out after {}",
+                    bmodels_model::format_duration(self.timeout)
+                )
+            } else {
+                error.to_string()
+            })
+        })
     }
 }

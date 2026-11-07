@@ -19,9 +19,9 @@ bmux_tui_components = { workspace = true, features = [
     "labeled-details",
     "modal-frame",
     "pane",
-    "scrollbar",
     "status-bar",
     "tab-bar",
+    "uniform-list",
 ] }
 bmux_tui_runtime = { workspace = true, features = ["crossterm"] }
 thiserror = { workspace = true, features = ["std"] }

@@ -9,10 +9,11 @@ use std::sync::Arc;
 use bmodels_model::{AckTarget, ModelStatus};
 use bmux_keyboard::{KeyCode, KeyStroke};
 use bmux_tui::event::{Event, MouseEventKind};
+use bmux_tui::geometry::Rect;
+use bmux_tui_components::uniform_list::{UniformList, UniformListOutcome, UniformListState};
 
 use crate::backend::{Backend, BackendEvent, Command, Data, EventSink};
 use crate::view::{Row, Tab, ViewOptions, row_identity, row_model_key, rows};
-use crate::widgets::FixedRowsState;
 
 /// Ticks between automatic reloads (picks up writes from a background `bmodels watch`).
 const RELOAD_TICKS: u64 = 250;
@@ -82,9 +83,11 @@ pub struct App<B: Backend> {
     pub loaded: bool,
     /// Active tab.
     pub tab: Tab,
-    states: [FixedRowsState; 4],
+    states: [UniformListState; 4],
     /// Rows visible in the list (set by the renderer).
     pub viewport_rows: usize,
+    /// Where the list's rows were painted, in terminal coordinates (set by the renderer).
+    pub list_area: Rect,
     /// Row-set options.
     pub view: ViewOptions,
     /// Typing into the filter.
@@ -115,8 +118,9 @@ impl<B: Backend> App<B> {
             data: Arc::new(Data::default()),
             loaded: false,
             tab: Tab::Inbox,
-            states: [FixedRowsState::default(); 4],
+            states: [UniformListState::new(); 4],
             viewport_rows: 10,
+            list_area: Rect::new(0, 0, 0, 0),
             view: ViewOptions::default(),
             filter_editing: false,
             details: true,
@@ -140,11 +144,11 @@ impl<B: Backend> App<B> {
 
     /// Selection state of the active tab.
     #[must_use]
-    pub const fn state(&self) -> FixedRowsState {
+    pub const fn state(&self) -> UniformListState {
         self.states[self.tab.index()]
     }
 
-    const fn state_mut(&mut self) -> &mut FixedRowsState {
+    pub(crate) const fn state_mut(&mut self) -> &mut UniformListState {
         &mut self.states[self.tab.index()]
     }
 
@@ -251,6 +255,13 @@ impl<B: Backend> App<B> {
         match event {
             Event::Key(stroke) => self.handle_key(*stroke),
             Event::Mouse(mouse) => {
+                if self.modal.is_none() {
+                    let (list, area) = (UniformList::new("rows", self.rows.len()), self.list_area);
+                    return match list.handle_event(area, self.state_mut(), event) {
+                        UniformListOutcome::Ignored => Handled::Ignored,
+                        _ => Handled::Redraw,
+                    };
+                }
                 let delta = match mouse.kind {
                     MouseEventKind::ScrollUp => -3,
                     MouseEventKind::ScrollDown => 3,
@@ -259,14 +270,10 @@ impl<B: Backend> App<B> {
                 match &mut self.modal {
                     Some(Modal::Help { scroll } | Modal::Details { scroll }) => {
                         *scroll = scroll.saturating_add_signed(delta);
+                        Handled::Redraw
                     }
-                    Some(Modal::ConfirmAckAll { .. }) => return Handled::Ignored,
-                    None => {
-                        let (len, viewport) = (self.rows.len(), self.viewport_rows);
-                        self.state_mut().scroll_by(delta, len, viewport);
-                    }
+                    Some(Modal::ConfirmAckAll { .. }) | None => Handled::Ignored,
                 }
-                Handled::Redraw
             }
             Event::Resize(_) => {
                 let (len, viewport) = (self.rows.len(), self.viewport_rows);
@@ -301,8 +308,8 @@ impl<B: Backend> App<B> {
             KeyCode::Down => self.state_mut().move_by(1, len, viewport),
             KeyCode::PageUp => self.state_mut().page(false, len, viewport),
             KeyCode::PageDown => self.state_mut().page(true, len, viewport),
-            KeyCode::Home => self.state_mut().move_by(isize::MIN, len, viewport),
-            KeyCode::End => self.state_mut().move_by(isize::MAX, len, viewport),
+            KeyCode::Home => self.state_mut().top(len, viewport),
+            KeyCode::End => self.state_mut().bottom(len, viewport),
             KeyCode::Tab => self.set_tab(self.tab.cycle(key.shift)),
             KeyCode::Enter => self.toggle_details(),
             KeyCode::Escape => {
@@ -333,8 +340,8 @@ impl<B: Backend> App<B> {
             'q' => return Handled::Quit,
             'j' => self.state_mut().move_by(1, len, viewport),
             'k' => self.state_mut().move_by(-1, len, viewport),
-            'g' => self.state_mut().move_by(isize::MIN, len, viewport),
-            'G' => self.state_mut().move_by(isize::MAX, len, viewport),
+            'g' => self.state_mut().top(len, viewport),
+            'G' => self.state_mut().bottom(len, viewport),
             '1' => self.set_tab(Tab::Inbox),
             '2' => self.set_tab(Tab::Models),
             '3' => self.set_tab(Tab::Sources),
