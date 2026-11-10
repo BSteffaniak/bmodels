@@ -374,3 +374,79 @@ fn empty_states() {
     app.apply(BackendEvent::Data(Arc::new(Data::default())));
     assert!(screen(&mut app, 100).contains("nothing synced yet"));
 }
+
+#[test]
+fn key_dialog_masks_input_and_saves_through_the_backend() {
+    let (mut app, rec) = app();
+    press(&mut app, '3');
+    let openai = app
+        .rows()
+        .iter()
+        .position(|r| matches!(r, Row::Source(i) if app.data.sources[*i].id == "openai"))
+        .unwrap();
+    for _ in 0..openai {
+        key(&mut app, KeyCode::Down);
+    }
+    press(&mut app, 'l');
+    assert!(matches!(&app.modal, Some(Modal::EnterKey { source, .. }) if source == "openai"));
+    for c in "sk-abc".chars() {
+        press(&mut app, c);
+    }
+    app.handle_event(&bmux_tui::event::Event::Paste("123".into()));
+    let text = screen(&mut app, 140);
+    assert!(text.contains("API key"), "{text}");
+    assert!(text.contains("https://keys.test"), "{text}");
+    assert!(text.contains("•••••••••"), "{text}");
+    assert!(!text.contains("sk-abc"), "{text}");
+    // `q`, `a`, `r` are typed into the key, not handled as shortcuts.
+    press(&mut app, 'q');
+    key(&mut app, KeyCode::Backspace);
+    assert_eq!(rec.take(), []);
+
+    key(&mut app, KeyCode::Enter);
+    assert!(app.modal.is_none());
+    let cmds = rec.take();
+    assert!(
+        matches!(cmds.as_slice(), [Command::SaveKey { source, key }]
+            if source == "openai" && key.expose() == "sk-abc123"),
+        "{cmds:?}"
+    );
+    assert_eq!(
+        app.key_input.borrow().buffer().text(),
+        "",
+        "wiped after submit"
+    );
+}
+
+#[test]
+fn key_dialog_cancels_and_skips_keyless_sources() {
+    let (mut app, rec) = app();
+    press(&mut app, 'l');
+    assert!(app.modal.is_none(), "not on the sources tab");
+    press(&mut app, '3');
+    let keyless = app
+        .rows()
+        .iter()
+        .position(|r| matches!(r, Row::Source(i) if !app.data.sources[*i].takes_key))
+        .unwrap();
+    for _ in 0..keyless {
+        key(&mut app, KeyCode::Down);
+    }
+    press(&mut app, 'l');
+    assert!(app.modal.is_none());
+    key(&mut app, KeyCode::Home);
+    let openai = app
+        .rows()
+        .iter()
+        .position(|r| matches!(r, Row::Source(i) if app.data.sources[*i].takes_key))
+        .unwrap();
+    for _ in 0..openai {
+        key(&mut app, KeyCode::Down);
+    }
+    press(&mut app, 'l');
+    press(&mut app, 'x');
+    key(&mut app, KeyCode::Escape);
+    assert!(app.modal.is_none());
+    assert_eq!(app.key_input.borrow().buffer().text(), "");
+    assert_eq!(rec.take(), []);
+}

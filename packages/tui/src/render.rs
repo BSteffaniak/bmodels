@@ -20,6 +20,7 @@ use bmux_tui_components::modal_frame::{ModalFrame, ModalFrameComponent, ModalSiz
 use bmux_tui_components::pane::{Pane, PaneComponent, PaneState};
 use bmux_tui_components::status_bar::{StatusBarComponent, StatusSegment, StatusSeverity};
 use bmux_tui_components::tab_bar::{TabBarComponent, TabBarPolicy, TabBarState, TabItem};
+use bmux_tui_components::text_input_box::{TextInputBoxComponent, TextInputBoxPolicy};
 use bmux_tui_components::uniform_list::UniformList;
 
 use crate::app::{App, MessageLevel, Modal};
@@ -825,7 +826,14 @@ fn source_details(data: &Data, s: &SourceRow, width: u16) -> Vec<Line> {
         lines.extend(wrapped(sk, width, Style::new()));
     }
     lines.push(Line::default());
-    lines.push(styled("R syncs just this source", MUTED));
+    lines.push(styled(
+        if s.takes_key {
+            "R syncs just this source · l adds its API key"
+        } else {
+            "R syncs just this source"
+        },
+        MUTED,
+    ));
     lines
 }
 
@@ -934,6 +942,7 @@ fn render_hints<B: Backend>(app: &App<B>, cx: &mut PaintCx<'_, '_>, area: Rect) 
         KeyHint::new("↑↓", "move"),
         KeyHint::new("R", "sync source"),
         KeyHint::new("r", "sync all"),
+        KeyHint::new("l", "add key"),
         KeyHint::new("i", "details"),
         KeyHint::new("/", "filter"),
         KeyHint::new("?", "help"),
@@ -1012,6 +1021,40 @@ fn render_modal<B: Backend>(app: &App<B>, modal: &Modal, cx: &mut PaintCx<'_, '_
                 scroll,
             );
         }
+        Modal::EnterKey { name, key_url, .. } => {
+            let mut parts = vec![(
+                format!(
+                    "Paste the {name} API key. It is saved to the bmodels vault (encrypted, \
+                     bound to this device) and the source syncs right away."
+                ),
+                Style::new(),
+            )];
+            if let Some(url) = key_url {
+                parts.push((format!("Create one at {url}  (^o opens it)"), MUTED));
+            }
+            parts.push(("enter saves · esc cancels".to_owned(), MUTED));
+            let frame = modal_frame(
+                &format!("{name} API key"),
+                Size::new(full.width.saturating_sub(4).min(76), 12),
+            );
+            let content = frame.content_area(full);
+            let lines: Vec<Line> = parts
+                .iter()
+                .flat_map(|(text, style)| wrapped(text, content.width, *style))
+                .collect();
+            paint_text_modal(cx, full, frame, lines, 0);
+            let input_rows = 4.min(content.height);
+            let input = Rect::new(
+                content.x,
+                content.y + content.height.saturating_sub(input_rows),
+                content.width,
+                input_rows,
+            );
+            let field = TextInputBoxComponent::new("api-key", app.key_policy, &app.key_input)
+                .label("API key")
+                .policy(TextInputBoxPolicy::labeled_field().focused(true));
+            cx.paint_component(&field, input);
+        }
         Modal::ConfirmAckAll { ids } => {
             let lines = vec![
                 Line::raw(format!(
@@ -1071,6 +1114,7 @@ fn help_lines() -> Vec<Line> {
             &[
                 ("r", "sync every enabled source now"),
                 ("R", "sources tab: sync the selected source"),
+                ("l", "sources tab: add or replace the source's API key"),
             ],
         ),
         ("Other", &[("?", "this help"), ("q / ^c", "quit")]),

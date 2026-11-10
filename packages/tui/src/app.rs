@@ -3,13 +3,18 @@
 //! [`App`] owns the [`Backend`], applies [`BackendEvent`]s, and handles input. It is testable
 //! without a terminal; `program.rs` forwards runtime events to it and `render.rs` draws it.
 
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use bmodels_model::{AckTarget, ModelStatus};
+use bmodels_model::{AckTarget, ModelStatus, Secret};
 use bmux_keyboard::{KeyCode, KeyStroke};
+use bmux_text_edit::TextEditBuffer;
 use bmux_tui::event::{Event, MouseEventKind};
 use bmux_tui::geometry::Rect;
+use bmux_tui_components::text_input::{
+    TextInputControl, TextInputMask, TextInputOutcome, TextInputPolicy, TextInputState,
+};
 use bmux_tui_components::uniform_list::{UniformList, UniformListOutcome, UniformListState};
 
 use crate::backend::{Backend, BackendEvent, Command, Data, EventSink};
@@ -57,6 +62,15 @@ pub enum Modal {
     Details {
         /// Scroll offset.
         scroll: usize,
+    },
+    /// Paste an API key for a source (typed into [`App::key_input`], masked).
+    EnterKey {
+        /// Source id.
+        source: String,
+        /// Display name.
+        name: String,
+        /// Where to create a key.
+        key_url: Option<String>,
     },
 }
 
@@ -106,6 +120,10 @@ pub struct App<B: Backend> {
     pub tick: u64,
     /// The terminal is too narrow for a details pane (set by the renderer).
     pub narrow: bool,
+    /// Masked input of the [`Modal::EnterKey`] dialog.
+    pub key_input: RefCell<TextInputState>,
+    /// Input policy of the key dialog.
+    pub key_policy: TextInputPolicy,
     rows: Vec<Row>,
 }
 
@@ -130,6 +148,8 @@ impl<B: Backend> App<B> {
             modal: None,
             tick: 0,
             narrow: false,
+            key_input: RefCell::new(masked_input()),
+            key_policy: TextInputPolicy::secret_field(),
             rows: Vec::new(),
         };
         app.refresh_rows(None);
@@ -272,12 +292,19 @@ impl<B: Backend> App<B> {
                         *scroll = scroll.saturating_add_signed(delta);
                         Handled::Redraw
                     }
-                    Some(Modal::ConfirmAckAll { .. }) | None => Handled::Ignored,
+                    Some(Modal::ConfirmAckAll { .. } | Modal::EnterKey { .. }) | None => {
+                        Handled::Ignored
+                    }
                 }
             }
             Event::Resize(_) => {
                 let (len, viewport) = (self.rows.len(), self.viewport_rows);
                 self.state_mut().clamp(len, viewport);
+                Handled::Redraw
+            }
+            Event::Paste(text) if matches!(self.modal, Some(Modal::EnterKey { .. })) => {
+                let control = TextInputControl::new(&self.key_policy);
+                control.handle_paste(&mut self.key_input.borrow_mut(), text);
                 Handled::Redraw
             }
             Event::Paste(text) if self.filter_editing => {
@@ -296,6 +323,10 @@ impl<B: Backend> App<B> {
             return Handled::Quit;
         }
         self.message = None;
+        if let Some(Modal::EnterKey { source, .. }) = &self.modal {
+            let source = source.clone();
+            return self.handle_key_entry(&source, stroke);
+        }
         if self.filter_editing {
             return self.handle_filter_key(key);
         }
@@ -381,7 +412,68 @@ impl<B: Backend> App<B> {
                 _ => self.info("select a source (tab 3) to sync just it"),
             },
             'o' => self.open_selected(),
+            'l' => self.enter_key(),
             _ => return Handled::Ignored,
+        }
+        Handled::Redraw
+    }
+
+    /// Opens the key dialog for the selected source.
+    fn enter_key(&mut self) {
+        let Some(Row::Source(i)) = self.selected() else {
+            self.info("select a source (tab 3) to add its API key");
+            return;
+        };
+        let row = &self.data.sources[i];
+        if !row.takes_key {
+            self.info(format!("{} does not take an API key", row.name));
+            return;
+        }
+        let modal = Modal::EnterKey {
+            source: row.id.clone(),
+            name: row.name.clone(),
+            key_url: row.key_url.clone(),
+        };
+        self.key_input.borrow_mut().wipe();
+        self.modal = Some(modal);
+    }
+
+    /// Keys while the key dialog is open: Enter saves, Esc cancels, ^o opens the key page,
+    /// everything else edits the masked input.
+    fn handle_key_entry(&mut self, source: &str, stroke: KeyStroke) -> Handled {
+        let key = Key::from(stroke);
+        match key.code {
+            KeyCode::Escape => {
+                self.key_input.borrow_mut().wipe();
+                self.modal = None;
+                return Handled::Redraw;
+            }
+            KeyCode::Char('o') if key.ctrl => {
+                if let Some(Modal::EnterKey {
+                    key_url: Some(url), ..
+                }) = &self.modal
+                {
+                    self.backend.request(Command::Open(url.clone()));
+                }
+                return Handled::Redraw;
+            }
+            _ => {}
+        }
+        let control = TextInputControl::new(&self.key_policy);
+        let outcome = control.handle_key(&mut self.key_input.borrow_mut(), stroke);
+        if outcome == TextInputOutcome::Submitted {
+            let key = Secret::new(self.key_input.borrow().buffer().text());
+            self.key_input.borrow_mut().wipe();
+            if key.is_empty() {
+                self.info("nothing entered");
+                return Handled::Redraw;
+            }
+            self.modal = None;
+            self.backend.request(Command::SaveKey {
+                source: source.to_owned(),
+                key,
+            });
+            self.info(format!("saving {source} key..."));
         }
         Handled::Redraw
     }
@@ -444,7 +536,7 @@ impl<B: Backend> App<B> {
                 }
                 self.modal = None;
             }
-            None => {}
+            Some(Modal::EnterKey { .. }) | None => {}
         }
         Handled::Redraw
     }
@@ -609,4 +701,9 @@ impl Key {
             _ => None,
         }
     }
+}
+
+/// An empty input that masks what is typed.
+fn masked_input() -> TextInputState {
+    TextInputState::new(TextEditBuffer::new()).with_mask(TextInputMask::bullets())
 }

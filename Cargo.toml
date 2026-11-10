@@ -28,6 +28,7 @@ bmodels_tui = { version = "0.1.0", path = "packages/tui", default-features = fal
 # Upstream bmux (local sibling checkout; switch to git once published)
 bmux_config_composition = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/config-composition" }
 bmux_keyboard = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/keyboard" }
+bmux_text_edit = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/text-edit" }
 bmux_tui = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui" }
 bmux_tui_components = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-components" }
 bmux_tui_runtime = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-runtime" }

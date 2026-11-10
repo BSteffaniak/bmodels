@@ -621,6 +621,7 @@ version = "0.1.0"
 dependencies = [
  "bmodels_model",
  "bmux_keyboard",
+ "bmux_text_edit",
  "bmux_tui",
  "bmux_tui_components",
  "bmux_tui_runtime",
@@ -753,6 +754,7 @@ dependencies = [
  "bmux_tui",
  "serde",
  "serde_json",
+ "unicode-segmentation",
  "web-time",
 ]
 
