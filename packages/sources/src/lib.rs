@@ -14,21 +14,46 @@ pub mod parse;
 pub mod secrets;
 pub mod testing;
 
-use bmodels_model::{ModelRecord, SourceKind, SourceSpec};
+use bmodels_model::{ModelRecord, Secret, SourceKind, SourceSpec};
 use globset::{GlobSet, GlobSetBuilder};
 
 pub use http::{Http, Request, Response, SwitchyHttp};
-pub use secrets::{EnvLookup, ProcessEnv, resolve_key};
+pub use secrets::{
+    KeyOrigin, ProcessEnv, ResolvedKey, SecretLookup, redact, resolve_key, resolve_ref,
+    resolve_value, run_secret_command,
+};
 
 /// Errors fetching a source.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SourceError {
-    /// The API key environment variable is not set (the source is skipped, not failed).
-    #[error("needs {0}")]
-    MissingKey(String),
+    /// No API key is configured (the source is skipped, not failed).
+    #[error(
+        "needs an API key: run `bmodels auth login {source_id}`{}",
+        env.as_ref().map_or_else(String::new, |v| format!(" or set {v}"))
+    )]
+    MissingKey {
+        /// Source id.
+        source_id: String,
+        /// The environment variable that would also work.
+        env: Option<String>,
+    },
+    /// The vault holding the key cannot be read (the source is skipped, not failed).
+    #[error("vault unavailable: {0}")]
+    VaultUnavailable(String),
     /// `api_key_cmd` failed.
     #[error("api_key_cmd failed: {0}")]
     KeyCommand(String),
+    /// A secret referenced by the source's configuration (a header) cannot be resolved.
+    #[error("secret {0}")]
+    Secret(String),
+    /// The provider rejected the API key.
+    #[error("API key rejected (HTTP {status}): run `bmodels auth login {source_id}`")]
+    KeyRejected {
+        /// Source id.
+        source_id: String,
+        /// Status code.
+        status: u16,
+    },
     /// Connection failure or timeout.
     #[error("request failed: {0}")]
     Http(String),
@@ -54,7 +79,31 @@ impl SourceError {
     /// Whether this means "skipped" rather than "failed".
     #[must_use]
     pub const fn is_skip(&self) -> bool {
-        matches!(self, Self::MissingKey(_))
+        matches!(self, Self::MissingKey { .. } | Self::VaultUnavailable(_))
+    }
+
+    /// The same error with every occurrence of `secrets` replaced by `<redacted>`.
+    #[must_use]
+    pub fn redacted(self, secrets: &[&Secret]) -> Self {
+        let r = |text: String| redact(&text, secrets);
+        match self {
+            Self::VaultUnavailable(t) => Self::VaultUnavailable(r(t)),
+            Self::KeyCommand(t) => Self::KeyCommand(r(t)),
+            Self::Secret(t) => Self::Secret(r(t)),
+            Self::Http(t) => Self::Http(r(t)),
+            Self::Status {
+                status,
+                url,
+                detail,
+            } => Self::Status {
+                status,
+                url: r(url),
+                detail: r(detail),
+            },
+            Self::Parse(t) => Self::Parse(r(t)),
+            Self::Config(t) => Self::Config(r(t)),
+            e @ (Self::MissingKey { .. } | Self::KeyRejected { .. }) => e,
+        }
     }
 }
 
@@ -72,7 +121,9 @@ pub struct FetchContext<'a> {
     /// HTTP client.
     pub http: &'a dyn Http,
     /// Resolved API key, if any.
-    pub api_key: Option<String>,
+    pub api_key: Option<Secret>,
+    /// Resolved extra headers (`[sources.<id>.headers]`).
+    pub headers: Vec<(String, Secret)>,
     /// Validators for a conditional GET (single-request sources only).
     pub validators: Validators,
 }
@@ -80,7 +131,11 @@ pub struct FetchContext<'a> {
 impl std::fmt::Debug for FetchContext<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FetchContext")
-            .field("api_key", &self.api_key.as_ref().map(|_| "<redacted>"))
+            .field("api_key", &self.api_key)
+            .field(
+                "headers",
+                &self.headers.iter().map(|(n, _)| n).collect::<Vec<_>>(),
+            )
             .field("validators", &self.validators)
             .finish_non_exhaustive()
     }

@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use bmodels_model::{
-    AckTarget, CanonicalModel, Event, Listing, ModelInfo, ModelStatus, SourceKind, SourceState,
-    Timestamp,
+    AckTarget, CanonicalModel, Event, Listing, ModelInfo, ModelStatus, Secret, SourceKind,
+    SourceState, Timestamp,
 };
 
 /// Source of data and executor of actions for the UI. Methods must not block.
@@ -50,6 +50,13 @@ pub enum Command {
     },
     /// Open a URL in the browser.
     Open(String),
+    /// Store a source's API key in the vault, then sync that source.
+    SaveKey {
+        /// Source id.
+        source: String,
+        /// The key.
+        key: Secret,
+    },
 }
 
 /// Something the backend reports.
@@ -136,6 +143,10 @@ pub struct SourceRow {
     pub state: SourceState,
     /// Next scheduled sync.
     pub next_due: Option<Timestamp>,
+    /// Whether the source takes an API key.
+    pub takes_key: bool,
+    /// Where to create one.
+    pub key_url: Option<String>,
 }
 
 /// Everything the UI shows. Built once per reload; indexes are precomputed.

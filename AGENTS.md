@@ -21,10 +21,10 @@ the shell's `libiconv`.
 
 - **Collections**: Always use `BTreeMap`/`BTreeSet`, never `HashMap`/`HashSet`
 - **Dependencies**: Use `workspace = true` in package manifests, never inline versions
-- **Upstream sibling crates**: bmux and switchy are path dependencies on the sibling checkouts
-  (`../bmux`, `../MoosicBox`) in the workspace `Cargo.toml` for now; they will move to git/crates.io
-  later. If a sibling crate pulls another switchy/moosicbox crate from crates.io, add a
-  `[patch.crates-io]` entry pointing at the sibling path so they unify.
+- **Upstream sibling crates**: bmux, switchy, and sshenv are path dependencies on the sibling
+  checkouts (`../bmux`, `../MoosicBox`, `../sshenv`) in the workspace `Cargo.toml` for now; they
+  will move to git/crates.io later. If a sibling crate pulls another switchy/moosicbox crate from
+  crates.io, add a `[patch.crates-io]` entry pointing at the sibling path so they unify.
 - **New Dependencies**: When adding a new dependency:
     - Add to workspace `Cargo.toml` with `default-features = false`
     - Specify full version including patch (e.g., `"0.4.28"` not `"0.4"`)
@@ -48,8 +48,11 @@ the shell's `libiconv`.
   to bmux instead.
 - **HTTP**: All HTTP goes through `switchy_http`. Upstream generic gaps to MoosicBox rather than
   adding another HTTP client.
-- **Secrets**: API keys are only ever read from env vars or commands named in config; never log,
-  persist, or serialize them.
+- **Secrets**: Secrets live in the bmodels sshenv vault (`bmodels_auth`, built on
+  `sshenv_vault::app`) or are read from env vars / commands named in config. Configuration holds
+  references only (`{ vault = "profile/VAR" }`). Carry values as `bmodels_model::Secret`; never
+  log, persist, or serialize them, and redact error text that could echo a request. Generic vault
+  needs go upstream to sshenv.
 - **Rustdoc Error docs**: Use asterisks (*) for bullet points, document all error conditions
 - **Must use**: Add `#[must_use]` to constructors and getters that return types OTHER THAN Result or Option
 

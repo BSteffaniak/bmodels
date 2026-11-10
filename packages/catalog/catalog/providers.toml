@@ -1,5 +1,5 @@
-# Direct provider APIs. Each needs an API key; a source whose key is not configured is skipped
-# (shown as "needs <VAR>" in `bmodels sources`), never an error.
+# Direct provider APIs. Each needs an API key (`bmodels auth login <source>`, or the env var); a
+# source without one is skipped, never an error. `key_url` is where `auth login` sends you.
 
 [sources.openai]
 name = "OpenAI"
@@ -7,6 +7,7 @@ kind = "OPENAI_COMPATIBLE"
 url = "https://api.openai.com/v1"
 vendor = "openai"
 api_key_env = "OPENAI_API_KEY"
+key_url = "https://platform.openai.com/api-keys"
 exclude = ["ft:*"]
 model_url = "https://platform.openai.com/docs/models/{id}"
 
@@ -16,6 +17,7 @@ kind = "ANTHROPIC"
 url = "https://api.anthropic.com/v1"
 vendor = "anthropic"
 api_key_env = "ANTHROPIC_API_KEY"
+key_url = "https://console.anthropic.com/settings/keys"
 model_url = "https://docs.claude.com/en/docs/about-claude/models/overview"
 
 [sources.gemini]
@@ -24,6 +26,7 @@ kind = "GEMINI"
 url = "https://generativelanguage.googleapis.com/v1beta"
 vendor = "google"
 api_key_env = "GEMINI_API_KEY"
+key_url = "https://aistudio.google.com/apikey"
 model_url = "https://ai.google.dev/gemini-api/docs/models"
 
 [sources.mistral]
@@ -32,6 +35,7 @@ kind = "OPENAI_COMPATIBLE"
 url = "https://api.mistral.ai/v1"
 vendor = "mistral"
 api_key_env = "MISTRAL_API_KEY"
+key_url = "https://console.mistral.ai/api-keys"
 exclude = ["ft:*"]
 model_url = "https://docs.mistral.ai/getting-started/models/"
 
@@ -41,6 +45,7 @@ kind = "OPENAI_COMPATIBLE"
 url = "https://api.x.ai/v1"
 vendor = "xai"
 api_key_env = "XAI_API_KEY"
+key_url = "https://console.x.ai"
 model_url = "https://docs.x.ai/docs/models"
 
 [sources.deepseek]
@@ -49,6 +54,7 @@ kind = "OPENAI_COMPATIBLE"
 url = "https://api.deepseek.com"
 vendor = "deepseek"
 api_key_env = "DEEPSEEK_API_KEY"
+key_url = "https://platform.deepseek.com/api_keys"
 model_url = "https://api-docs.deepseek.com/quick_start/pricing"
 
 # Inference hosts serve other vendors' models, so no `vendor`: it comes from the model id.
@@ -58,6 +64,7 @@ name = "Groq"
 kind = "OPENAI_COMPATIBLE"
 url = "https://api.groq.com/openai/v1"
 api_key_env = "GROQ_API_KEY"
+key_url = "https://console.groq.com/keys"
 model_url = "https://console.groq.com/docs/models"
 
 [sources.together]
@@ -65,6 +72,7 @@ name = "Together AI"
 kind = "OPENAI_COMPATIBLE"
 url = "https://api.together.xyz/v1"
 api_key_env = "TOGETHER_API_KEY"
+key_url = "https://api.together.ai/settings/api-keys"
 model_url = "https://www.together.ai/models"
 
 [sources.cerebras]
@@ -72,4 +80,5 @@ name = "Cerebras"
 kind = "OPENAI_COMPATIBLE"
 url = "https://api.cerebras.ai/v1"
 api_key_env = "CEREBRAS_API_KEY"
+key_url = "https://cloud.cerebras.ai"
 model_url = "https://inference-docs.cerebras.ai/models/overview"

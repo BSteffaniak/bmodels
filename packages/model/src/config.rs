@@ -10,6 +10,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::duration::{DurationError, parse_duration};
+use crate::secret::SecretValue;
 use crate::state::EventKind;
 
 /// Default sync interval for sources that do not set one.
@@ -31,6 +32,8 @@ pub struct Config {
     pub filters: FilterSpec,
     /// Notification sinks.
     pub notify: NotifySpec,
+    /// Secret storage.
+    pub auth: AuthSpec,
 }
 
 impl Config {
@@ -204,9 +207,12 @@ pub struct SourceSpec {
     /// Sync without a key when none is configured (otherwise the source is skipped).
     #[serde(default)]
     pub api_key_optional: bool,
-    /// Extra request headers.
+    /// Extra request headers. Values may reference secrets (`{ vault = "local/TOKEN" }`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub headers: BTreeMap<String, String>,
+    pub headers: BTreeMap<String, SecretValue>,
+    /// Where to create an API key for this source (shown by `bmodels auth`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_url: Option<String>,
     /// Sync interval (defaults to `settings.interval`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interval: Option<String>,
@@ -250,6 +256,7 @@ impl SourceSpec {
             api_key_cmd: None,
             api_key_optional: false,
             headers: BTreeMap::new(),
+            key_url: None,
             interval: None,
             include: Vec::new(),
             exclude: Vec::new(),
@@ -320,8 +327,9 @@ pub struct NotifySpec {
     pub desktop: bool,
     /// Run this command (argv) with the events as JSON on stdin.
     pub command: Vec<String>,
-    /// POST the events as JSON to this URL.
-    pub webhook: Option<String>,
+    /// POST the events as JSON to this URL. Webhook URLs are credentials: prefer a
+    /// reference (`{ vault = "notify/WEBHOOK" }`).
+    pub webhook: Option<SecretValue>,
     /// Event kinds that notify.
     pub kinds: Vec<EventKind>,
     /// Maximum models named in one desktop notification.
@@ -338,6 +346,27 @@ impl Default for NotifySpec {
             max_items: 6,
         }
     }
+}
+
+/// `[auth]`: where bmodels keeps secrets.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AuthSpec {
+    /// Vault file (defaults to `<data dir>/auth/vault`; `$BMODELS_VAULT` overrides).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vault: Option<String>,
+    /// Bind vault entries to this device: `off`, `preferred` (default), or `required`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_seal: Option<String>,
+    /// Concrete device-seal backend (`macos-keychain-device-only`, `local-file`, ...).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_seal_backend: Option<String>,
+    /// High-level device-seal mode (`transparent-device-only`, `default`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_seal_mode: Option<String>,
+    /// Reject weaker device-seal fallbacks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_seal_strict: Option<bool>,
 }
 
 #[cfg(test)]

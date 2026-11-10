@@ -7,7 +7,7 @@
 
 use bmodels_model::{ModelInfo, ModelRecord, SourceSpec};
 
-use super::{endpoint, send_conditional, with_spec_headers};
+use super::{endpoint, send_conditional, with_headers};
 use crate::http::Request;
 use crate::parse::plain_text;
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError};
@@ -15,7 +15,7 @@ use crate::{FetchContext, FetchOutcome, Fetched, SourceError};
 const CARD: &str = "href=\"/library/";
 
 pub async fn fetch(spec: &SourceSpec, ctx: &FetchContext<'_>) -> Result<FetchOutcome, SourceError> {
-    let request = with_spec_headers(Request::get(endpoint(spec)?), spec);
+    let request = with_headers(Request::get(endpoint(spec)?), ctx);
     let Some((response, validators)) = send_conditional(ctx, request).await? else {
         return Ok(FetchOutcome::NotModified);
     };

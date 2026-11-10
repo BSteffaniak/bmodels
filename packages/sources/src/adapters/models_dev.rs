@@ -6,13 +6,13 @@
 use bmodels_model::{ModelInfo, ModelRecord, SourceSpec};
 use serde_json::Value;
 
-use super::{endpoint, send_conditional, with_spec_headers};
+use super::{endpoint, send_conditional, with_headers};
 use crate::http::Request;
 use crate::parse::{bool_at, f64_at, json, string_at, strings_at, timestamp_at, u64_at};
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError, Validators};
 
 pub async fn fetch(spec: &SourceSpec, ctx: &FetchContext<'_>) -> Result<FetchOutcome, SourceError> {
-    let request = with_spec_headers(Request::get(endpoint(spec)?), spec);
+    let request = with_headers(Request::get(endpoint(spec)?), ctx);
     let Some((response, validators)) = send_conditional(ctx, request).await? else {
         return Ok(FetchOutcome::NotModified);
     };

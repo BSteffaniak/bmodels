@@ -12,6 +12,7 @@ categories.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+bmodels_auth = { workspace = true }
 bmodels_config = { workspace = true }
 bmodels_engine = { workspace = true }
 bmodels_model = { workspace = true }
@@ -23,14 +24,18 @@ clap = { workspace = true }
 log = { workspace = true }
 open = { workspace = true }
 pretty_env_logger = { workspace = true }
+rpassword = { workspace = true }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["rt", "sync", "time"] }
 toml = { workspace = true, features = ["display", "serde"] }
+zeroize = { workspace = true, features = ["alloc"] }
 
 [features]
 default = []
 fail-on-warnings = [
+    "bmodels_auth/fail-on-warnings",
     "bmodels_config/fail-on-warnings",
     "bmodels_engine/fail-on-warnings",
     "bmodels_model/fail-on-warnings",

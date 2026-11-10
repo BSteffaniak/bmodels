@@ -33,6 +33,11 @@ pub use paths::{APP_NAME, AppDirs, DATABASE_FILE, Environment, NoHome, Platform}
 pub const CONFIG_ENV: &str = "BMODELS_CONFIG";
 /// Environment variable overriding the data directory.
 pub const DATA_DIR_ENV: &str = "BMODELS_DATA_DIR";
+/// Environment variable overriding the secret vault file.
+pub const VAULT_ENV: &str = "BMODELS_VAULT";
+/// Vault file inside the data directory, unless `[auth] vault` or `$BMODELS_VAULT` says
+/// otherwise.
+pub const DEFAULT_VAULT_FILE: &str = "auth/vault";
 
 /// Layer-name prefix of catalog layers.
 const CATALOG_LAYER_PREFIX: &str = "catalog/";
@@ -215,6 +220,8 @@ pub struct LoadedConfig {
     /// The data directory (`$BMODELS_DATA_DIR`, else `settings.data_dir`, else the platform
     /// default).
     pub data_dir: PathBuf,
+    /// Explicit vault file (`$BMODELS_VAULT`, else `auth.vault`).
+    pub vault: Option<PathBuf>,
 }
 
 impl LoadedConfig {
@@ -222,6 +229,14 @@ impl LoadedConfig {
     #[must_use]
     pub fn database_path(&self) -> PathBuf {
         self.data_dir.join(DATABASE_FILE)
+    }
+
+    /// The secret vault file: [`LoadedConfig::vault`], else `<data dir>/auth/vault`.
+    #[must_use]
+    pub fn vault_path(&self) -> PathBuf {
+        self.vault
+            .clone()
+            .unwrap_or_else(|| self.data_dir.join(DEFAULT_VAULT_FILE))
     }
 }
 
@@ -332,6 +347,13 @@ pub fn load(options: &LoadOptions) -> Result<LoadedConfig, ConfigError> {
     } else {
         options.app_dirs()?.data
     };
+    let vault = if let Some(path) = options.env.var(VAULT_ENV) {
+        Some(options.absolute(options.env.expand_tilde(path)?))
+    } else if let Some(path) = &config.auth.vault {
+        Some(options.absolute(options.env.expand_tilde(path)?))
+    } else {
+        None
+    };
 
     Ok(LoadedConfig {
         config,
@@ -341,6 +363,7 @@ pub fn load(options: &LoadOptions) -> Result<LoadedConfig, ConfigError> {
             .collect(),
         global_path,
         data_dir,
+        vault,
     })
 }
 
@@ -384,7 +407,29 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
             "must be at least 1".to_owned(),
         ));
     }
+    let check_ref = |key: String, value: &bmodels_model::SecretValue| match value {
+        bmodels_model::SecretValue::Ref(bmodels_model::SecretRef::Vault(name)) => {
+            bmodels_model::SecretName::parse(name)
+                .map(|_| ())
+                .map_err(|e| invalid(key, e.to_string()))
+        }
+        _ => Ok(()),
+    };
+    if let Some(webhook) = &config.notify.webhook {
+        check_ref("notify.webhook".to_owned(), webhook)?;
+    }
+    if let Some(policy) = &config.auth.device_seal
+        && !is_device_seal_policy(policy)
+    {
+        return Err(invalid(
+            "auth.device_seal".to_owned(),
+            "expected `off`, `preferred`, or `required`".to_owned(),
+        ));
+    }
     for (id, spec) in &config.sources {
+        for (header, value) in &spec.headers {
+            check_ref(format!("sources.{id}.headers.{header}"), value)?;
+        }
         if let Some(interval) = &spec.interval {
             bmodels_model::parse_duration(interval)
                 .map_err(|e| invalid(format!("sources.{id}.interval"), e.to_string()))?;
@@ -401,6 +446,30 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
         }
     }
     Ok(())
+}
+
+/// Whether `value` is a device-seal policy setting (the spellings
+/// `sshenv_vault::app::AppDeviceSealPolicy::from_setting` accepts).
+fn is_device_seal_policy(value: &str) -> bool {
+    let normalized: String = value
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .flat_map(char::to_lowercase)
+        .collect();
+    matches!(
+        normalized.as_str(),
+        "off"
+            | "false"
+            | "disabled"
+            | "never"
+            | "preferred"
+            | "prefer"
+            | "auto"
+            | "required"
+            | "require"
+            | "true"
+            | "on"
+    )
 }
 
 fn layer_kind(layer: &str) -> LayerKind {
@@ -479,11 +548,19 @@ pub const STARTER_CONFIG: &str = r#"# bmodels configuration. Built-in sources co
 # [filters]
 # exclude = ["*embedding*", "*tts*", "*whisper*"]
 
+# Secrets never need to live in this file. API keys: `bmodels auth login <source>`. Anything
+# else sensitive (headers, the webhook URL) can reference the vault, an env var, or a command:
+# [sources.local.headers]
+# X-Api-Key = { vault = "local/X_API_KEY" }   # `bmodels secret set local/X_API_KEY`
+
+# [auth]
+# device_seal = "preferred"   # off | preferred | required: bind vault entries to this device
+
 [notify]
 # desktop = true
 # kinds = ["NEW"]                       # also: NEW_LISTING, CHANGED, REMOVED, REAPPEARED
 # command = ["sh", "-c", "cat > /tmp/bmodels-events.json"]
-# webhook = "https://example.com/hook"
+# webhook = { vault = "notify/WEBHOOK" }  # `bmodels secret set notify/WEBHOOK`
 "#;
 
 #[cfg(test)]
@@ -586,6 +663,33 @@ mod tests {
             loaded.database_path(),
             f.home.join("data").join(DATABASE_FILE)
         );
+        assert_eq!(
+            loaded.vault_path(),
+            f.home.join("data").join(DEFAULT_VAULT_FILE)
+        );
+        let loaded = load(&options(&f, &[(VAULT_ENV, "~/v".to_owned())])).unwrap();
+        assert_eq!(loaded.vault_path(), f.home.join("v"));
+    }
+
+    #[test]
+    fn rejects_malformed_secret_references() {
+        let f = fixture();
+        fs::write(
+            global_file(&f),
+            "[notify]\nwebhook = { vault = \"nope\" }\n",
+        )
+        .unwrap();
+        let text = load(&options(&f, &[])).unwrap_err().to_string();
+        assert!(text.contains("notify.webhook"), "{text}");
+        fs::write(global_file(&f), "[auth]\ndevice_seal = \"sometimes\"\n").unwrap();
+        let text = load(&options(&f, &[])).unwrap_err().to_string();
+        assert!(text.contains("auth.device_seal"), "{text}");
+        fs::write(
+            global_file(&f),
+            "[notify]\nwebhook = { vault = \"notify/WEBHOOK\" }\n",
+        )
+        .unwrap();
+        assert!(load(&options(&f, &[])).is_ok());
     }
 
     #[test]

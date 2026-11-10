@@ -1,9 +1,9 @@
 //! Google Generative Language `GET /v1beta/models` (pagination via `nextPageToken`).
 
-use bmodels_model::{ModelInfo, ModelRecord, SourceSpec};
+use bmodels_model::{ModelInfo, ModelRecord, Secret, SourceSpec};
 use serde_json::Value;
 
-use super::{MAX_PAGES, encode, endpoint, join, send, with_spec_headers};
+use super::{MAX_PAGES, encode, endpoint, join, send, with_headers};
 use crate::http::Request;
 use crate::parse::{bool_at, json, str_at, string_at, strings_at, u64_at};
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError, Validators};
@@ -17,8 +17,8 @@ pub async fn fetch(spec: &SourceSpec, ctx: &FetchContext<'_>) -> Result<FetchOut
             || format!("{base}?pageSize=1000"),
             |t| format!("{base}?pageSize=1000&pageToken={}", encode(t)),
         );
-        let request = with_spec_headers(Request::get(url), spec)
-            .header_opt("x-goog-api-key", ctx.api_key.as_deref());
+        let request = with_headers(Request::get(url), ctx)
+            .header_opt("x-goog-api-key", ctx.api_key.as_ref().map(Secret::expose));
         let page = json(&send(ctx, &request).await?.body)?;
         let (mut items, next) = parse_page(&page)?;
         records.append(&mut items);

@@ -84,6 +84,8 @@ fn source(id: &str, name: &str, health: &SourceHealthLike) -> SourceRow {
         interval: "6h".into(),
         state,
         next_due: Some(NOW + 3_600),
+        takes_key: id == "openai",
+        key_url: (id == "openai").then(|| "https://keys.test".into()),
     }
 }
 

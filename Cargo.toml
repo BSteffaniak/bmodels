@@ -14,6 +14,7 @@ version = "0.1.0"
 
 [workspace.dependencies]
 # Internal packages
+bmodels_auth = { version = "0.1.0", path = "packages/auth", default-features = false }
 bmodels_catalog = { version = "0.1.0", path = "packages/catalog", default-features = false }
 bmodels_cli = { version = "0.1.0", path = "packages/cli", default-features = false }
 bmodels_config = { version = "0.1.0", path = "packages/config", default-features = false }
@@ -30,6 +31,9 @@ bmux_keyboard = { version = "0.0.1-alpha.4", default-features = false, path = ".
 bmux_tui = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui" }
 bmux_tui_components = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-components" }
 bmux_tui_runtime = { version = "0.0.1-alpha.4", default-features = false, path = "../bmux/packages/tui-runtime" }
+
+# Upstream sshenv (local sibling checkout; switch to git once published)
+sshenv_vault = { version = "0.0.1-alpha.6", default-features = false, path = "../sshenv/packages/vault" }
 
 # Upstream switchy (local sibling checkout; switch to git once published)
 switchy_database = { version = "0.5.0", default-features = false, path = "../MoosicBox/packages/switchy/database" }
@@ -71,7 +75,11 @@ chrono = { version = "0.4.45", default-features = false }
 globset = { version = "0.4.21", default-features = false }
 notify-rust = { version = "4.18.2", default-features = false }
 open = { version = "5.4.0", default-features = false }
+rpassword = { version = "7.5.4", default-features = false }
 roxmltree = { version = "0.21.2", default-features = false, features = ["std"] }
+
+# Secrets
+zeroize = { version = "1.9.1", default-features = false }
 
 # Logging
 log = { version = "0.4.35", default-features = false }
@@ -88,3 +96,8 @@ codegen-units = 1
 lto = "fat"
 opt-level = 3
 strip = "symbols"
+
+# sshenv pulls these switchy crates from crates.io; unify them with the sibling checkout.
+[patch.crates-io]
+switchy_age = { path = "../MoosicBox/packages/switchy/age" }
+switchy_fs = { path = "../MoosicBox/packages/switchy/fs" }

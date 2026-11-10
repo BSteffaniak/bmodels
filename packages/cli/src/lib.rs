@@ -6,9 +6,11 @@
 //! and the TUI backend that wires `bmodels_tui` to the store and engine.
 
 mod args;
+mod auth;
 mod commands;
 mod context;
 mod output;
+mod prompt;
 mod resolve;
 mod tui_backend;
 

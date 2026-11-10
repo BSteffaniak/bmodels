@@ -37,10 +37,10 @@ pub fn join(base: &str, path: &str) -> String {
     )
 }
 
-/// Adds the spec's extra headers.
-pub fn with_spec_headers(mut request: Request, spec: &SourceSpec) -> Request {
-    for (name, value) in &spec.headers {
-        request = request.header(name, value);
+/// Adds the source's resolved extra headers.
+pub fn with_headers(mut request: Request, ctx: &FetchContext<'_>) -> Request {
+    for (name, value) in &ctx.headers {
+        request = request.header(name, value.expose());
     }
     request
 }

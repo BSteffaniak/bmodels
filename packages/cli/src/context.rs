@@ -47,6 +47,11 @@ impl Context {
             .with_context(|| format!("opening {}", self.database.display()))
     }
 
+    /// The secret vault.
+    pub fn vault(&self) -> bmodels_auth::AuthVault {
+        bmodels_auth::AuthVault::new(self.loaded.vault_path(), &self.config().auth)
+    }
+
     /// The HTTP timeout.
     pub fn timeout(&self) -> std::time::Duration {
         self.config()

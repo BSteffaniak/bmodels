@@ -7,7 +7,7 @@
 use bmodels_model::{ModelInfo, ModelRecord, SourceSpec};
 use serde_json::Value;
 
-use super::{encode, endpoint, send, with_spec_headers};
+use super::{encode, endpoint, send, with_headers};
 use crate::http::Request;
 use crate::parse::{json, string_at, strings_at, timestamp_at};
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError, Validators};
@@ -29,9 +29,9 @@ pub async fn fetch(spec: &SourceSpec, ctx: &FetchContext<'_>) -> Result<FetchOut
             "{base}?author={}&sort=createdAt&direction=-1&limit={limit}",
             encode(author)
         );
-        let mut request = with_spec_headers(Request::get(url), spec);
+        let mut request = with_headers(Request::get(url), ctx);
         if let Some(key) = &ctx.api_key {
-            request = request.header("authorization", format!("Bearer {key}"));
+            request = request.header("authorization", format!("Bearer {}", key.expose()));
         }
         let response = send(ctx, &request).await?;
         records.extend(parse(&json(&response.body)?)?);

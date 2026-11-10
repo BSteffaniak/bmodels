@@ -20,6 +20,7 @@ serde_json = { workspace = true }
 switchy_http = { workspace = true, features = ["gzip", "reqwest"] }
 thiserror = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["rt"] }
+zeroize = { workspace = true, features = ["alloc"] }
 
 [features]
 default = []

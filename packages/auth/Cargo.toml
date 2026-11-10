@@ -1,0 +1,34 @@
+[package]
+name = "bmodels_auth"
+description = "bmodels secret storage: sshenv vault, credential discovery, and plaintext checks"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+bmodels_model = { workspace = true }
+bmodels_sources = { workspace = true }
+serde_json = { workspace = true }
+sshenv_vault = { workspace = true, features = [
+    "app-vault",
+    "device-seal-file",
+    "macos-keychain",
+] }
+thiserror = { workspace = true, features = ["std"] }
+zeroize = { workspace = true, features = ["alloc"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = []
+fail-on-warnings = [
+    "bmodels_model/fail-on-warnings",
+    "bmodels_sources/fail-on-warnings",
+    "sshenv_vault/fail-on-warnings",
+]

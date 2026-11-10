@@ -13,7 +13,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
 
-use bmodels_model::{EventKind, FieldChange, NotifySpec, Timestamp};
+use bmodels_model::{EventKind, FieldChange, NotifySpec, Secret, Timestamp};
 use serde::Serialize;
 
 /// Time allowed for each sink.
@@ -129,7 +129,14 @@ const fn plural(n: usize) -> &'static str {
 }
 
 /// Delivers `digest` to every configured sink, returning one error per failed sink.
-pub async fn deliver(spec: &NotifySpec, digest: &Digest) -> Vec<NotifyError> {
+///
+/// `webhook` is `spec.webhook` already resolved (it may reference a secret); `None` skips the
+/// webhook sink.
+pub async fn deliver(
+    spec: &NotifySpec,
+    webhook: Option<&Secret>,
+    digest: &Digest,
+) -> Vec<NotifyError> {
     if digest.items.is_empty() {
         return Vec::new();
     }
@@ -145,8 +152,8 @@ pub async fn deliver(spec: &NotifySpec, digest: &Digest) -> Vec<NotifyError> {
     {
         errors.push(e);
     }
-    if let Some(url) = &spec.webhook
-        && let Err(e) = webhook(url, digest.to_json()).await
+    if let Some(url) = webhook
+        && let Err(e) = post_webhook(url.expose(), digest.to_json()).await
     {
         errors.push(e);
     }
@@ -206,12 +213,13 @@ pub fn command(argv: &[String], payload: &[u8]) -> Result<(), NotifyError> {
     }
 }
 
-/// POSTs `json` to `url`.
+/// POSTs `json` to `url`. Error messages never include the URL (webhook URLs are
+/// credentials).
 ///
 /// # Errors
 ///
 /// * [`NotifyError::Webhook`] on transport failures, non-2xx statuses, or timeouts
-pub async fn webhook(url: &str, json: String) -> Result<(), NotifyError> {
+pub async fn post_webhook(url: &str, json: String) -> Result<(), NotifyError> {
     let request = switchy_http::Client::new()
         .post(url)
         .header("content-type", "application/json")
@@ -221,7 +229,7 @@ pub async fn webhook(url: &str, json: String) -> Result<(), NotifyError> {
     let response = tokio::time::timeout(SINK_TIMEOUT, request)
         .await
         .map_err(|_| NotifyError::Webhook("timed out".to_owned()))?
-        .map_err(|e| NotifyError::Webhook(e.to_string()))?;
+        .map_err(|e| NotifyError::Webhook(e.to_string().replace(url, "<webhook>")))?;
     let status = response.status();
     if status.is_success() {
         Ok(())

@@ -5,11 +5,14 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use anyhow::Context as _;
+use bmodels_auth::VaultLookup;
 use bmodels_engine::{Engine, Progress, Selection, SourceOutcome, SyncReport, notices};
 use bmodels_model::display::{format_age, format_ago, format_date, format_datetime, format_tokens};
-use bmodels_model::{AckTarget, Event, EventKind, ModelStatus, SourceHealth, Timestamp};
+use bmodels_model::{
+    AckTarget, Event, EventKind, ModelStatus, SecretValue, SourceHealth, Timestamp,
+};
 use bmodels_notify::{Digest, NotifyItem};
-use bmodels_sources::{ProcessEnv, SwitchyHttp};
+use bmodels_sources::SwitchyHttp;
 use bmodels_store::{EventQuery, Store};
 use serde::Serialize;
 
@@ -45,6 +48,8 @@ pub fn dispatch(cli: Cli) -> anyhow::Result<ExitCode> {
         Commands::Show(args) => show(&ctx, &args),
         Commands::History(args) => history(&ctx, &args),
         Commands::Sources(args) => sources(&ctx, &args),
+        Commands::Auth(command) => crate::auth::auth(&ctx, &command),
+        Commands::Secret(command) => crate::auth::secret(&ctx, &command),
         Commands::Config(command) => config(&ctx, &command),
     }
 }
@@ -106,7 +111,9 @@ async fn run_sync(
     live: bool,
 ) -> anyhow::Result<SyncReport> {
     let http = SwitchyHttp::new(ctx.timeout())?;
-    let engine = Engine::new(ctx.config(), store, &http, &ProcessEnv);
+    let vault = ctx.vault();
+    let secrets = VaultLookup::new(Some(&vault));
+    let engine = Engine::new(ctx.config(), store, &http, &secrets);
     let progress = |p: &Progress| {
         if !live {
             return;
@@ -207,7 +214,18 @@ pub async fn notify(ctx: &Context, store: &Store) -> anyhow::Result<usize> {
         })
         .collect();
     let count = items.len();
-    for error in bmodels_notify::deliver(&config.notify, &Digest { items }).await {
+    let webhook = if items.is_empty() {
+        None
+    } else {
+        config.notify.webhook.as_ref().and_then(|value| {
+            let vault = ctx.vault();
+            bmodels_sources::resolve_value(value, &VaultLookup::new(Some(&vault)))
+                .map_err(|e| eprintln!("bmodels: notify.webhook: {e}"))
+                .ok()
+        })
+    };
+    for error in bmodels_notify::deliver(&config.notify, webhook.as_ref(), &Digest { items }).await
+    {
         eprintln!("bmodels: {error}");
     }
     store.mark_notified(&pending.ids, now()).await?;
@@ -892,9 +910,17 @@ fn config(ctx: &Context, command: &ConfigCommand) -> anyhow::Result<ExitCode> {
     match command {
         ConfigCommand::Path => unreachable!("handled before loading"),
         ConfigCommand::Show => {
+            // Plaintext secrets are shown as `<redacted>`; references are shown as written.
+            let mut shown = ctx.config().clone();
+            for spec in shown.sources.values_mut() {
+                for value in spec.headers.values_mut() {
+                    *value = value.redacted();
+                }
+            }
+            shown.notify.webhook = shown.notify.webhook.as_ref().map(SecretValue::redacted);
             print!(
                 "{}",
-                toml::to_string_pretty(ctx.config()).context("encoding configuration")?
+                toml::to_string_pretty(&shown).context("encoding configuration")?
             );
         }
         ConfigCommand::Init { force } => {
@@ -920,6 +946,7 @@ fn config(ctx: &Context, command: &ConfigCommand) -> anyhow::Result<ExitCode> {
                 "{} configuration is valid ({enabled} enabled source(s))",
                 paint(Paint::Green, "✓")
             );
+            crate::auth::print_findings(&bmodels_auth::plaintext_secrets(ctx.config()));
         }
     }
     Ok(ExitCode::SUCCESS)

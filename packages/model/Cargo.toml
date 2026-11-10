@@ -13,6 +13,7 @@ categories.workspace = true
 [dependencies]
 serde = { workspace = true, features = ["derive", "std"] }
 thiserror = { workspace = true, features = ["std"] }
+zeroize = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]
 toml = { workspace = true, features = ["parse", "serde"] }

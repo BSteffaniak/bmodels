@@ -822,11 +822,7 @@ fn source_details(data: &Data, s: &SourceRow, width: u16) -> Vec<Line> {
             "Skipped",
             Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         ));
-        lines.extend(wrapped(
-            &format!("{sk} — set it in your environment (or `api_key_cmd`) to enable this source."),
-            width,
-            Style::new(),
-        ));
+        lines.extend(wrapped(sk, width, Style::new()));
     }
     lines.push(Line::default());
     lines.push(styled("R syncs just this source", MUTED));

@@ -18,8 +18,23 @@ bmodels sync        # first sync records a silent baseline: nothing is "new" yet
 bmodels             # the TUI: inbox, models, sources, history
 ```
 
-Sources that need an API key are skipped until the key is set (`export OPENAI_API_KEY=...`, or
-`api_key_cmd = "op read ..."` in config). The keyless registries work out of the box.
+The keyless registries work out of the box. Sources that need an API key are skipped until you
+add one, once:
+
+```sh
+bmodels auth login openai          # opens the key page, hidden paste, verifies, saves
+bmodels auth login anthropic
+op read op://Private/OpenAI/key | bmodels auth login openai --stdin   # scripted
+bmodels auth status                # where each key comes from; `auth verify` re-checks them
+bmodels auth discover              # keys other tools already keep here (import with `auth import`)
+```
+
+Keys live in bmodels' own [sshenv](https://github.com/BSteffaniak/sshenv) vault (encrypted,
+bound to this device, unlocked without prompts so `watch` works unattended). `OPENAI_API_KEY`
+style environment variables and `api_key_cmd = "op read ..."` keep working. Other sensitive
+values (webhook URLs, auth headers) can reference the vault too: `bmodels secret set
+notify/WEBHOOK`, then `webhook = { vault = "notify/WEBHOOK" }`; `bmodels secret check` finds
+plaintext secrets left in config.
 
 Keep it running in the background with desktop notifications:
 

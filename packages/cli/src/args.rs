@@ -57,6 +57,12 @@ pub enum Commands {
     History(HistoryArgs),
     /// Show configured sources and their health.
     Sources(JsonArgs),
+    /// Manage source API keys (stored in the bmodels sshenv vault).
+    #[command(subcommand)]
+    Auth(AuthCommand),
+    /// Manage other secrets in the vault (webhook URLs, header values).
+    #[command(subcommand)]
+    Secret(SecretCommand),
     /// Configuration helpers.
     #[command(subcommand)]
     Config(ConfigCommand),
@@ -219,4 +225,142 @@ pub enum ConfigCommand {
     },
     /// Validate the configuration.
     Check,
+}
+
+/// `auth` subcommands.
+///
+/// Interactive when stdin and stderr are terminals; otherwise nothing prompts and missing
+/// choices fail with the flag to pass.
+#[derive(Debug, Subcommand)]
+pub enum AuthCommand {
+    /// List sources that take an API key and whether one is configured.
+    Providers(JsonArgs),
+    /// Show where each source's key comes from, what it overrides, and its last sync result.
+    Status(StatusArgs),
+    /// Store a source's API key in the vault (verifies it first).
+    Login(LoginArgs),
+    /// Check configured keys against each provider's model list.
+    Verify(VerifyArgs),
+    /// Delete stored API keys.
+    Logout(LogoutArgs),
+    /// List API keys other tools keep on this machine (never prints values).
+    Discover(JsonArgs),
+    /// Copy a discovered key into the vault.
+    Import(ImportArgs),
+}
+
+/// `auth status`.
+#[derive(Debug, Args)]
+pub struct StatusArgs {
+    /// Only this source.
+    pub source: Option<String>,
+    /// Print JSON.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `auth login`.
+#[derive(Debug, Args)]
+pub struct LoginArgs {
+    /// Source id (`openai`). Omit to pick interactively.
+    pub source: Option<String>,
+    /// Where the key comes from (default: a hidden prompt).
+    #[command(flatten)]
+    pub input: ValueInput,
+    /// Replace a key already in the vault.
+    #[arg(long)]
+    pub replace: bool,
+    /// Store without checking the key against the provider.
+    #[arg(long)]
+    pub no_verify: bool,
+    /// Do not open the provider's key page in a browser.
+    #[arg(long)]
+    pub no_open: bool,
+}
+
+/// `auth verify`.
+#[derive(Debug, Args)]
+pub struct VerifyArgs {
+    /// Sources to check (default: every enabled source with a key configured).
+    pub sources: Vec<String>,
+    /// Print JSON.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `auth logout`.
+#[derive(Debug, Args)]
+pub struct LogoutArgs {
+    /// Source id. Omit to pick interactively.
+    #[arg(conflicts_with = "all")]
+    pub source: Option<String>,
+    /// Every stored API key.
+    #[arg(long)]
+    pub all: bool,
+    /// Do not ask for confirmation (required when not interactive).
+    #[arg(long)]
+    pub yes: bool,
+}
+
+/// `auth import`.
+#[derive(Debug, Args)]
+pub struct ImportArgs {
+    /// Source id the key is for.
+    pub source: String,
+    /// Index shown by `bmodels auth discover`.
+    #[arg(long, value_name = "INDEX")]
+    pub from: usize,
+    /// Replace a key already in the vault.
+    #[arg(long)]
+    pub replace: bool,
+    /// Do not ask for confirmation (required when not interactive).
+    #[arg(long)]
+    pub yes: bool,
+}
+
+/// `secret` subcommands. Names are `profile/VAR` (`notify/WEBHOOK`).
+#[derive(Debug, Subcommand)]
+pub enum SecretCommand {
+    /// List vault entries and where configuration uses them (never prints values).
+    List(JsonArgs),
+    /// Store a value.
+    Set(SecretSetArgs),
+    /// Delete a value.
+    Unset(SecretUnsetArgs),
+    /// Find plaintext secrets in configuration (exit code 1 if any).
+    Check(JsonArgs),
+}
+
+/// `secret set`.
+#[derive(Debug, Args)]
+pub struct SecretSetArgs {
+    /// Entry name, `profile/VAR`.
+    pub name: String,
+    /// Where the value comes from (default: a hidden prompt).
+    #[command(flatten)]
+    pub input: ValueInput,
+    /// Replace an existing value.
+    #[arg(long)]
+    pub replace: bool,
+}
+
+/// `secret unset`.
+#[derive(Debug, Args)]
+pub struct SecretUnsetArgs {
+    /// Entry name, `profile/VAR`.
+    pub name: String,
+    /// Do not ask for confirmation (required when not interactive).
+    #[arg(long)]
+    pub yes: bool,
+}
+
+/// Non-interactive ways to supply a secret. Values are never accepted as arguments.
+#[derive(Debug, Args)]
+pub struct ValueInput {
+    /// Read the value from stdin (`op read ... | bmodels auth login openai --stdin`).
+    #[arg(long, visible_alias = "key-stdin", conflicts_with = "from_env")]
+    pub stdin: bool,
+    /// Copy the value from this environment variable.
+    #[arg(long, value_name = "VAR")]
+    pub from_env: Option<String>,
 }

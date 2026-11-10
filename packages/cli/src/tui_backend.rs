@@ -9,9 +9,10 @@ use std::fmt::Write as _;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use bmodels_auth::VaultLookup;
 use bmodels_engine::{Engine, Progress, Selection, SourceOutcome};
 use bmodels_model::{Config, SourceState, Timestamp, format_duration};
-use bmodels_sources::{ProcessEnv, SwitchyHttp};
+use bmodels_sources::SwitchyHttp;
 use bmodels_store::Store;
 use bmodels_tui::{Backend, BackendEvent, Command, Data, EventSink, SourceRow};
 use tokio::sync::mpsc;
@@ -49,6 +50,8 @@ pub fn source_rows(
                 ..SourceState::default()
             }),
             next_due: due.get(id).copied(),
+            takes_key: spec.wants_key(),
+            key_url: spec.key_url.clone(),
         })
         .collect()
 }
@@ -156,6 +159,29 @@ fn worker(ctx: &Context, sink: &EventSink, mut rx: mpsc::UnboundedReceiver<Comma
                         sink.send(BackendEvent::Error(format!("cannot open {url}: {e}")));
                     }
                 }
+                Command::SaveKey { source, key } => {
+                    let saved = bmodels_model::SecretName::api_key(&source)
+                        .map_err(|e| e.to_string())
+                        .and_then(|name| ctx.vault().set(&name, key).map_err(|e| e.to_string()));
+                    if let Err(e) = saved {
+                        sink.send(BackendEvent::Error(format!("saving the key: {e}")));
+                        continue;
+                    }
+                    sink.send(BackendEvent::Info(format!(
+                        "saved {source} key; syncing it"
+                    )));
+                    if syncing.replace(true) {
+                        send_data(ctx, &store, sink).await;
+                        continue;
+                    }
+                    let (ctx, store, sink, syncing) =
+                        (ctx.clone(), store.clone(), sink.clone(), syncing.clone());
+                    tokio::task::spawn_local(async move {
+                        run_sync(&ctx, &store, &sink, vec![source]).await;
+                        syncing.set(false);
+                        send_data(&ctx, &store, &sink).await;
+                    });
+                }
             }
         }
     });
@@ -181,7 +207,9 @@ async fn run_sync(ctx: &Context, store: &Store, sink: &EventSink, ids: Vec<Strin
             return;
         }
     };
-    let engine = Engine::new(ctx.config(), store, &http, &ProcessEnv);
+    let vault = ctx.vault();
+    let secrets = VaultLookup::new(Some(&vault));
+    let engine = Engine::new(ctx.config(), store, &http, &secrets);
     let progress = |p: &Progress| {
         let event = match p {
             Progress::Planned(ids) => BackendEvent::SyncStarted(ids.clone()),

@@ -4,9 +4,12 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use bmodels_model::{AckTarget, Config, EventKind, ModelStatus, SourceKind, SourceSpec};
+use bmodels_model::{
+    AckTarget, Config, EventKind, ModelStatus, Secret, SecretName, SecretRef, SecretValue,
+    SourceKind, SourceSpec,
+};
 use bmodels_sources::testing::{FakeHttp, block_on};
-use bmodels_sources::{EnvLookup, Response, SourceError};
+use bmodels_sources::{Response, SecretLookup, SourceError};
 use bmodels_store::{EventQuery, Store};
 
 use super::*;
@@ -23,7 +26,7 @@ fn advance(secs: i64) {
 
 struct Env(BTreeMap<&'static str, &'static str>);
 
-impl EnvLookup for Env {
+impl SecretLookup for Env {
     fn var(&self, name: &str) -> Option<String> {
         self.0.get(name).map(|v| (*v).to_owned())
     }
@@ -106,7 +109,9 @@ fn baseline_then_new_models_then_ack() {
     assert!(matches!(outcome(&report, "openai"), SourceOutcome::Synced(c) if c.baseline == 2));
     assert_eq!(
         outcome(&report, "locked"),
-        &SourceOutcome::Skipped("needs MISSING_KEY".into())
+        &SourceOutcome::Skipped(
+            "needs an API key: run `bmodels auth login locked` or set MISSING_KEY".into()
+        )
     );
     assert_eq!(
         block_on(store.models()).unwrap().len(),
@@ -123,7 +128,12 @@ fn baseline_then_new_models_then_ack() {
             .contains(&("authorization".into(), "Bearer sk-test".into()))
     );
     let locked = block_on(store.source_state("locked")).unwrap();
-    assert_eq!(locked.skipped.as_deref(), Some("needs MISSING_KEY"));
+    assert!(
+        locked
+            .skipped
+            .as_deref()
+            .is_some_and(|s| s.contains("bmodels auth login locked"))
+    );
 
     // 2. A new model appears on both sources.
     advance(3_600);
@@ -257,4 +267,143 @@ fn due_selection_and_unknown_ids() {
     let due = block_on(engine.resolve(&Selection::Due)).unwrap();
     assert!(!due.contains(&"router".to_owned()), "just synced");
     assert!(due.contains(&"openai".to_owned()));
+}
+
+/// Environment plus vault entries.
+struct Vault(BTreeMap<&'static str, &'static str>);
+
+impl SecretLookup for Vault {
+    fn var(&self, _name: &str) -> Option<String> {
+        None
+    }
+
+    fn vault(&self, name: &SecretName) -> Result<Option<Secret>, String> {
+        Ok(self
+            .0
+            .get(name.to_string().as_str())
+            .map(|v| Secret::new(*v)))
+    }
+}
+
+const ANTHROPIC: &str = "https://api.anthropic.com/v1/models?limit=1000";
+
+#[test]
+fn vault_keys_and_header_references_reach_requests() {
+    let mut config = config();
+    config.sources.get_mut("openai").unwrap().headers.insert(
+        "x-org".into(),
+        SecretValue::Ref(SecretRef::Vault("openai/ORG".into())),
+    );
+    let store = block_on(Store::open_in_memory()).unwrap();
+    let http = FakeHttp::new()
+        .route(OPENAI, openai_body(&["gpt-4o"]))
+        .route(ANTHROPIC, r#"{"data":[],"has_more":false}"#);
+    let vault = Vault(BTreeMap::from([
+        ("openai/API_KEY", "sk-vault"),
+        ("openai/ORG", "org-secret"),
+        ("locked/API_KEY", "sk-ant"),
+    ]));
+    let engine = Engine::new(&config, &store, &http, &vault).with_clock(clock);
+    let report = run(
+        &engine,
+        &Selection::Ids(vec!["openai".into(), "locked".into()]),
+    );
+    assert!(matches!(
+        outcome(&report, "openai"),
+        SourceOutcome::Synced(_)
+    ));
+    assert!(matches!(
+        outcome(&report, "locked"),
+        SourceOutcome::Synced(_)
+    ));
+    let sent = http.requests();
+    let openai = sent.iter().find(|r| r.url == OPENAI).unwrap();
+    assert!(
+        openai
+            .headers
+            .contains(&("authorization".into(), "Bearer sk-vault".into()))
+    );
+    assert!(
+        openai
+            .headers
+            .contains(&("x-org".into(), "org-secret".into()))
+    );
+    let anthropic = sent.iter().find(|r| r.url == ANTHROPIC).unwrap();
+    assert!(
+        anthropic
+            .headers
+            .contains(&("x-api-key".into(), "sk-ant".into()))
+    );
+}
+
+#[test]
+fn missing_header_secret_fails_and_names_the_header() {
+    let mut config = config();
+    config.sources.get_mut("router").unwrap().headers.insert(
+        "x-token".into(),
+        SecretValue::Ref(SecretRef::Vault("router/TOKEN".into())),
+    );
+    let store = block_on(Store::open_in_memory()).unwrap();
+    let http = FakeHttp::new().route(ROUTER, router_body(&["a/b"]));
+    let env = Env(BTreeMap::new());
+    let engine = Engine::new(&config, &store, &http, &env).with_clock(clock);
+    let report = run(&engine, &Selection::Ids(vec!["router".into()]));
+    let SourceOutcome::Failed(error) = outcome(&report, "router") else {
+        panic!("expected failure");
+    };
+    assert!(error.contains("headers.x-token"), "{error}");
+    assert!(error.contains("bmodels secret set router/TOKEN"), "{error}");
+    assert_eq!(http.requests().len(), 0);
+}
+
+#[test]
+fn rejected_keys_are_named_and_secrets_are_redacted() {
+    let mut config = config();
+    config.sources.get_mut("router").unwrap().headers.insert(
+        "x-token".into(),
+        SecretValue::Literal("hdr-secret-value".into()),
+    );
+    let store = block_on(Store::open_in_memory()).unwrap();
+    let http = FakeHttp::new();
+    http.set(
+        OPENAI,
+        Ok(Response {
+            status: 401,
+            headers: BTreeMap::new(),
+            body: b"bad key".to_vec(),
+        }),
+    );
+    http.set(
+        ROUTER,
+        Ok(Response {
+            status: 500,
+            headers: BTreeMap::new(),
+            body: b"echo: hdr-secret-value".to_vec(),
+        }),
+    );
+    let env = Env(BTreeMap::from([("OPENAI_KEY", "sk-test")]));
+    let engine = Engine::new(&config, &store, &http, &env).with_clock(clock);
+    let report = run(
+        &engine,
+        &Selection::Ids(vec!["openai".into(), "router".into()]),
+    );
+    assert_eq!(
+        outcome(&report, "openai"),
+        &SourceOutcome::Failed(
+            SourceError::KeyRejected {
+                source_id: "openai".into(),
+                status: 401
+            }
+            .to_string()
+        )
+    );
+    let SourceOutcome::Failed(error) = outcome(&report, "router") else {
+        panic!("expected failure");
+    };
+    assert!(
+        !error.contains("hdr-secret-value") && error.contains("<redacted>"),
+        "{error}"
+    );
+    let state = block_on(store.source_state("router")).unwrap();
+    assert!(!state.last_error.unwrap().contains("hdr-secret-value"));
 }

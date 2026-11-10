@@ -1,9 +1,9 @@
 //! Anthropic `GET /v1/models` (cursor pagination via `has_more` / `last_id`).
 
-use bmodels_model::{ModelInfo, ModelRecord, SourceSpec};
+use bmodels_model::{ModelInfo, ModelRecord, Secret, SourceSpec};
 use serde_json::Value;
 
-use super::{MAX_PAGES, encode, endpoint, join, send, with_spec_headers};
+use super::{MAX_PAGES, encode, endpoint, join, send, with_headers};
 use crate::http::Request;
 use crate::parse::{bool_at, json, string_at, timestamp_at, u64_at};
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError, Validators};
@@ -20,9 +20,9 @@ pub async fn fetch(spec: &SourceSpec, ctx: &FetchContext<'_>) -> Result<FetchOut
             || format!("{base}?limit=1000"),
             |cursor| format!("{base}?limit=1000&after_id={}", encode(cursor)),
         );
-        let request = with_spec_headers(Request::get(url), spec)
+        let request = with_headers(Request::get(url), ctx)
             .header("anthropic-version", API_VERSION)
-            .header_opt("x-api-key", ctx.api_key.as_deref());
+            .header_opt("x-api-key", ctx.api_key.as_ref().map(Secret::expose));
         let page = json(&send(ctx, &request).await?.body)?;
         let (mut items, next) = parse_page(&page)?;
         records.append(&mut items);
@@ -87,7 +87,8 @@ mod tests {
         spec.api_key_env = Some("K".into());
         let ctx = FetchContext {
             http: &http,
-            api_key: Some("sk".into()),
+            api_key: Some(Secret::new("sk")),
+            headers: Vec::new(),
             validators: Validators::default(),
         };
         let FetchOutcome::Fetched(fetched) = crate::testing::block_on(fetch(&spec, &ctx)).unwrap()

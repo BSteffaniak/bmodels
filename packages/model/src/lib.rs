@@ -9,6 +9,7 @@
 //! * [`config`]: the configuration schema (`[settings]`, `[sources.<id>]`, `[canonical]`, ...)
 //! * [`record`]: what a source adapter returns ([`ModelRecord`]) and the tracked-field diff
 //! * [`state`]: what the store persists (canonical models, listings, events, source state)
+//! * [`secret`]: secret values and references (`{ vault = "openai/API_KEY" }`)
 //! * [`duration`]: `"30s"` / `"6h"` / `"1d"` interval parsing
 //! * [`display`]: dates, ages, token counts, and prices for humans
 
@@ -16,13 +17,15 @@ pub mod config;
 pub mod display;
 pub mod duration;
 pub mod record;
+pub mod secret;
 pub mod state;
 
 pub use config::{
-    CanonicalRules, Config, FilterSpec, NotifySpec, Settings, SourceKind, SourceSpec,
+    AuthSpec, CanonicalRules, Config, FilterSpec, NotifySpec, Settings, SourceKind, SourceSpec,
 };
 pub use duration::{DurationError, format_duration, parse_duration};
 pub use record::{FieldChange, ModelInfo, ModelRecord, RecordKind};
+pub use secret::{API_KEY_VAR, InvalidSecretName, Secret, SecretName, SecretRef, SecretValue};
 pub use state::{
     AckTarget, CanonicalModel, Event, EventKind, Listing, ListingKey, ListingStatus, ModelStatus,
     SourceHealth, SourceState, SyncRun,

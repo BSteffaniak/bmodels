@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bmodels_model::{Config, SourceSpec, SourceState, SyncRun, Timestamp};
 use bmodels_sources::{
-    EnvLookup, FetchContext, FetchOutcome, Http, IdFilter, SourceError, Validators,
+    FetchContext, FetchOutcome, Http, IdFilter, SecretLookup, SourceError, Validators,
 };
 use bmodels_store::{Store, StoreError};
 use futures_util::StreamExt as _;
@@ -119,7 +119,7 @@ pub struct Engine<'a> {
     config: &'a Config,
     store: &'a Store,
     http: &'a dyn Http,
-    env: &'a dyn EnvLookup,
+    secrets: &'a dyn SecretLookup,
     clock: fn() -> Timestamp,
 }
 
@@ -136,13 +136,13 @@ impl<'a> Engine<'a> {
         config: &'a Config,
         store: &'a Store,
         http: &'a dyn Http,
-        env: &'a dyn EnvLookup,
+        secrets: &'a dyn SecretLookup,
     ) -> Self {
         Self {
             config,
             store,
             http,
-            env,
+            secrets,
             clock: bmodels_model::now,
         }
     }
@@ -242,9 +242,12 @@ impl<'a> Engine<'a> {
         Ok(report)
     }
 
-    /// Fingerprint of everything that shapes a source's stored listings.
+    /// Fingerprint of everything that shapes a source's stored listings. Headers are left out:
+    /// they may hold secrets and do not shape listings.
     fn fingerprint(&self, spec: &SourceSpec) -> String {
-        let text = serde_json::to_string(&(spec, &self.config.canonical, &self.config.filters))
+        let mut spec = spec.clone();
+        spec.headers.clear();
+        let text = serde_json::to_string(&(&spec, &self.config.canonical, &self.config.filters))
             .unwrap_or_default();
         format!("{:016x}", crate::canonical::fnv1a(&text))
     }
@@ -255,7 +258,21 @@ impl<'a> Engine<'a> {
         spec: &SourceSpec,
         state: &SourceState,
     ) -> Result<FetchOutcome, SourceError> {
-        let api_key = bmodels_sources::resolve_key(spec, self.env)?;
+        let api_key = bmodels_sources::resolve_key(id, spec, self.secrets)?.map(|k| k.secret);
+        let headers = spec
+            .headers
+            .iter()
+            .map(|(name, value)| {
+                bmodels_sources::resolve_value(value, self.secrets)
+                    .map(|secret| (name.clone(), secret))
+                    .map_err(|e| match e {
+                        SourceError::Secret(detail) => {
+                            SourceError::Secret(format!("headers.{name} ({detail})"))
+                        }
+                        other => other,
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let validators = if state.fingerprint.as_deref() == Some(self.fingerprint(spec).as_str()) {
             Validators {
                 etag: state.etag.clone(),
@@ -267,10 +284,27 @@ impl<'a> Engine<'a> {
         let ctx = FetchContext {
             http: self.http,
             api_key,
+            headers,
             validators,
         };
         log::debug!("fetching {id}");
-        bmodels_sources::fetch(id, spec, &ctx).await
+        let result = bmodels_sources::fetch(id, spec, &ctx).await;
+        let secrets: Vec<_> = ctx
+            .api_key
+            .iter()
+            .chain(ctx.headers.iter().map(|(_, s)| s))
+            .collect();
+        result.map_err(|e| match e {
+            SourceError::Status { status, .. }
+                if (status == 401 || status == 403) && ctx.api_key.is_some() =>
+            {
+                SourceError::KeyRejected {
+                    source_id: id.to_owned(),
+                    status,
+                }
+            }
+            other => other.redacted(&secrets),
+        })
     }
 
     #[allow(clippy::too_many_arguments)] // internal step; grouping would only add a struct

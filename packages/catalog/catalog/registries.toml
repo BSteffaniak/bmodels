@@ -39,6 +39,7 @@ name = "Hugging Face"
 kind = "HUGGINGFACE"
 url = "https://huggingface.co/api/models"
 api_key_env = "HF_TOKEN"
+key_url = "https://huggingface.co/settings/tokens"
 api_key_optional = true
 # First-party LLM orgs. `google` and `microsoft` are left out by default: they publish dozens of
 # research artifacts a week (Gemma and Phi releases still arrive via the other registries).

@@ -5,7 +5,7 @@
 use bmodels_model::{ModelInfo, ModelRecord, RecordKind, SourceSpec};
 use roxmltree::{Document, Node};
 
-use super::{endpoint, send_conditional, with_spec_headers};
+use super::{endpoint, send_conditional, with_headers};
 use crate::http::Request;
 use crate::parse::{plain_text, timestamp};
 use crate::{FetchContext, FetchOutcome, Fetched, SourceError};
@@ -18,7 +18,7 @@ pub async fn fetch(
     spec: &SourceSpec,
     ctx: &FetchContext<'_>,
 ) -> Result<FetchOutcome, SourceError> {
-    let request = with_spec_headers(Request::get(endpoint(spec)?), spec);
+    let request = with_headers(Request::get(endpoint(spec)?), ctx);
     let Some((response, validators)) = send_conditional(ctx, request).await? else {
         return Ok(FetchOutcome::NotModified);
     };
